@@ -8,6 +8,20 @@ from logging.handlers import TimedRotatingFileHandler
 from os import environ
 from pathlib import Path
 
+from os import environ
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import storage
+
+STORAGE_BUCKET = str(environ.get('STORAGE_BUCKET'))
+bucket = None
+if STORAGE_BUCKET!='None':
+    cred = credentials.Certificate('firebase-admin.json')
+    firebase_admin.initialize_app(cred, {
+        'storageBucket': STORAGE_BUCKET
+    })
+    bucket = storage.bucket()
+
 import seaborn as sns
 from discord.ext import commands
 from matplotlib import pyplot as plt
@@ -21,6 +35,11 @@ def setup():
     # Make required directories.
     for path in constants.ALL_DIRS:
         os.makedirs(path, exist_ok=True)
+    
+    # Update the user.db file from firebase
+    if bucket!=None:
+        blob = bucket.blob('tle.db')
+        blob.download_to_filename(constants.USER_DB_FILE_PATH)
 
     # logging to console and file on daily interval
     logging.basicConfig(format='{asctime}:{levelname}:{name}:{message}', style='{',

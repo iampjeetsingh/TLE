@@ -13,6 +13,7 @@ pillow = "^5.4"
 pycairo = "^1.19.1"
 PyGObject = "^3.34.0"
 aiocache = "^0.11.1"
+firebase-admin = "^5.0.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"

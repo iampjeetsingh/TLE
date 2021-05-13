@@ -84,6 +84,12 @@ Fill in appropriate variables in new "environment" file.
 - **ALLOW_DUEL_SELF_REGISTER**: boolean value indicating if self registration for duels is enabled.
 - **TLE_ADMIN**: the name of the role that can run admin commands of the bot. If this is not set, the role name will default to "Admin".
 - **TLE_MODERATOR**: the name of the role that can run moderator commands of the bot. If this is not set, the role name will default to "Moderator".
+- **STORAGE_BUCKET**: the link of firebase storage bucket to save backups of database
+
+#### For Setting Up Backups to Firebase Storage
+
+You will need to create a new firebase project to store backups of your database.
+After creating a project go to project settings -> service accounts and then click on create new service account if there isn't one already creted and finally click on generate new private key. Rename this file to 'firebase-admin.json' and place it inside the bot's folder.
 
 To start TLE just run:
 
