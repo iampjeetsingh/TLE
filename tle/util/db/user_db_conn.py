@@ -14,7 +14,7 @@ STORAGE_BUCKET = str(environ.get('STORAGE_BUCKET'))
 if STORAGE_BUCKET!='None':
     bucket = storage.bucket()
 
-_DEFAULT_VC_RATING = 0
+_DEFAULT_VC_RATING = 100
 
 class Gitgud(IntEnum):
     GOTGUD = 0

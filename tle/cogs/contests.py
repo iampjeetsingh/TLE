@@ -770,7 +770,7 @@ class Contests(commands.Cog):
             rating_history = cf_common.user_db.get_vc_rating_history(member.id)
             if not rating_history:
                 raise ContestCogError(f'{member.mention} has no vc history.')
-            ratingbefore = 0
+            ratingbefore = 100
             for vc_id, rating in rating_history:
                 vc = cf_common.user_db.get_rated_vc(vc_id)
                 perf = ratingbefore + (rating - ratingbefore)*4
