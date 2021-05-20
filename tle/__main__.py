@@ -29,6 +29,7 @@ from matplotlib import pyplot as plt
 from tle import constants
 from tle.util import codeforces_common as cf_common
 from tle.util import discord_common, font_downloader
+from tle.util import clist_api
 
 
 def setup():
@@ -99,6 +100,7 @@ def main():
     # on_ready event handler rather than an on_ready listener.
     @discord_common.on_ready_event_once(bot)
     async def init():
+        clist_api.cache()
         await cf_common.initialize(args.nodb)
         asyncio.create_task(discord_common.presence(bot))
 
