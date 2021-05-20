@@ -17,7 +17,7 @@ from collections import namedtuple
 import discord
 from discord.ext import commands
 import os
-
+from os import environ
 from tle.util.rounds import Round
 from tle.util import discord_common
 from tle.util import paginator
@@ -109,36 +109,30 @@ _WEBSITE_ALLOWED_PATTERNS['codechef.com'] = [
     'lunch', 'cook', 'rated']
 _WEBSITE_ALLOWED_PATTERNS['atcoder.jp'] = [
     'abc:', 'arc:', 'agc:', 'grand', 'beginner', 'regular']
-_WEBSITE_ALLOWED_PATTERNS['topcoder.com'] = ['srm', 'tco']
 _WEBSITE_ALLOWED_PATTERNS['codingcompetitions.withgoogle.com'] = ['']
 _WEBSITE_ALLOWED_PATTERNS['facebook.com/hackercup'] = ['']
-_WEBSITE_ALLOWED_PATTERNS['codedrills.io'] = ['']
 
 _WEBSITE_DISALLOWED_PATTERNS = defaultdict(list)
 _WEBSITE_DISALLOWED_PATTERNS['codeforces.com'] = [
     'wild', 'fools', 'kotlin', 'unrated']
 _WEBSITE_DISALLOWED_PATTERNS['codechef.com'] = ['unrated']
 _WEBSITE_DISALLOWED_PATTERNS['atcoder.jp'] = []
-_WEBSITE_DISALLOWED_PATTERNS['topcoder.com'] = []
 _WEBSITE_DISALLOWED_PATTERNS['codingcompetitions.withgoogle.com'] = [
     'registration']
 _WEBSITE_DISALLOWED_PATTERNS['facebook.com/hackercup'] = []
-_WEBSITE_DISALLOWED_PATTERNS['codedrills.io'] = []
 
 _SUPPORTED_WEBSITES = [
     'codeforces.com',
     'codechef.com',
     'atcoder.jp',
-    'topcoder.com',
     'codingcompetitions.withgoogle.com',
-    'facebook.com/hackercup',
-    'codedrills.io'
+    'facebook.com/hackercup'
 ]
 
 GuildSettings = recordtype(
     'GuildSettings', [
         ('channel_id', None), ('role_id', None),
-        ('before', None), ('localtimezone', pytz.timezone('UTC')),
+        ('before', None), ('localtimezone', pytz.timezone('Asia/Kolkata')),
         ('website_allowed_patterns', defaultdict(list)),
         ('website_disallowed_patterns', defaultdict(list))])
 
@@ -169,6 +163,18 @@ class Reminders(commands.Cog):
         self.role_converter = commands.RoleConverter()
 
         self.logger = logging.getLogger(self.__class__.__name__)
+
+        # Initialise Remind Settings for Specific Guild
+        guild_id = environ.get('REMIND_GUILD_ID')
+        channel_id = environ.get('REMIND_CHANNEL_ID')
+        role_id = environ.get('REMIND_ROLE_ID')
+        if guild_id is not None and channel_id is not None and role_id is not None:
+            guild_id = int(guild_id)
+            channel_id = int(channel_id)
+            role_id = int(role_id)
+            self.guild_map[guild_id].role_id = role_id
+            self.guild_map[guild_id].before = [60]
+            self.guild_map[guild_id].channel_id = channel_id
 
     @commands.Cog.listener()
     @discord_common.once
