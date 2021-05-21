@@ -12,15 +12,94 @@ from tle import constants
 from tle.util import codeforces_api as cf
 from tle.util import codeforces_common as cf_common
 from tle.util import discord_common
+from tle.util.db import user_db_conn
 from tle.util.db.user_db_conn import Gitgud
 from tle.util import paginator
 from tle.util import cache_system2
+
+from PIL import Image, ImageFont, ImageDraw
+import io
 
 
 _GITGUD_NO_SKIP_TIME = 2 * 60 * 60
 _GITGUD_SCORE_DISTRIB = (2, 3, 5, 8, 12, 17, 23, 23, 23)
 _GITGUD_MAX_NEG_DELTA_VALUE = -300
 _GITGUD_MAX_POS_DELTA_VALUE = 500
+
+def rating_to_color(rating):
+    """returns (r, g, b) pixels values corresponding to rating"""
+    # TODO: Integrate these colors with the ranks in codeforces_api.py
+    BLACK = (10, 10, 10)
+    RED = (255, 20, 20)
+    BLUE = (0, 0, 200)
+    GREEN = (0, 140, 0)
+    ORANGE = (250, 140, 30)
+    PURPLE = (160, 0, 120)
+    CYAN = (0, 165, 170)
+    GREY = (70, 70, 70)
+    if rating is None or rating=='N/A':
+        return BLACK
+    if rating < 1200:
+        return GREY
+    if rating < 1400:
+        return GREEN
+    if rating < 1600:
+        return CYAN
+    if rating < 1900:
+        return BLUE
+    if rating < 2100:
+        return PURPLE
+    if rating < 2400:
+        return ORANGE
+    return RED
+
+def get_leaderboard_image(rows, font):
+    """return PIL image for rankings"""
+    SMOKE_WHITE = (250, 250, 250)
+    BLACK = (0, 0, 0)
+    img = Image.new('RGB', (900, 450), color=SMOKE_WHITE)
+    draw = ImageDraw.Draw(img)
+
+    START_X, START_Y = 20, 20
+    Y_INC = 32
+    WIDTH_RANK = 64
+    WIDTH_NAME = 340
+
+    def draw_row(pos, username, handle, rating, color, y):
+        x = START_X
+        draw.text((x, y), pos, fill=color, font=font)
+        x += WIDTH_RANK
+        draw.text((x, y), username, fill=color, font=font)
+        x += WIDTH_NAME
+        draw.text((x, y), handle, fill=color, font=font)
+        x += WIDTH_NAME
+        draw.text((x, y), rating, fill=color, font=font)
+
+    y = START_Y
+    # draw header
+    draw_row('#', 'Username', 'Problems Solved', 'Points', BLACK, y)
+    y += int(Y_INC * 1.5)
+
+    # trim name to fit in the column width
+    def _trim(name):
+        width = WIDTH_NAME - 10
+        while font.getsize(name)[0] > width:
+            name = name[:-4] + '...'  # "…" is printed as floating dots
+        return name
+
+    for pos, name, handle, rating, points in rows:
+        name = _trim(name)
+        handle = _trim(handle)
+        color = rating_to_color(rating)
+        draw_row(str(pos), name, handle, str(points) if points else 'N/A', color, y)
+        if rating and rating >= 3000:  # nutella
+            nutella_x = START_X + WIDTH_RANK
+            draw.text((nutella_x, y), name[0], fill=BLACK, font=font)
+            nutella_x += WIDTH_NAME
+            draw.text((nutella_x, y), handle[0], fill=BLACK, font=font)
+        y += Y_INC
+
+    return img
 
 
 class CodeforcesCogError(commands.CommandError):
@@ -30,6 +109,7 @@ class CodeforcesCogError(commands.CommandError):
 class Codeforces(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.font = ImageFont.truetype(constants.NOTO_SANS_CJK_BOLD_FONT_PATH, size=26)
         self.converter = commands.MemberConverter()
 
     async def _validate_gitgud_status(self, ctx, delta):
@@ -190,6 +270,62 @@ class Codeforces(commands.Cog):
 
         pages = [make_page(chunk) for chunk in paginator.chunkify(submissions[:100], 10)]
         paginator.paginate(self.bot, ctx.channel, pages, wait_time=5 * 60, set_pagenum_footers=True)
+    
+
+    @commands.command(brief='See weekly leaderboard',usage='')
+    async def leaderboard(self, ctx, *args):
+        handles = {handle for discord_id, handle
+                            in cf_common.user_db.get_handles_for_guild(ctx.guild.id)}
+        wait_msg = await ctx.channel.send('Loading leaderboard, please wait...')
+        date = datetime.datetime.now()-datetime.timedelta(days=7)
+        filt = cf_common.SubFilter(False)
+        filt.parse('');
+        filt.dlo = date.timestamp()
+        rows = []
+        i = 1
+        for handle in handles:
+            if i%4==0:
+                time.sleep(1)
+            user = cf_common.user_db.fetch_cf_user(handle)
+            rating = user.rating or 1100
+            rating = (rating//100)*100
+            print(user.handle, rating)
+            rating = max(rating, 1100)
+            submissions = await cf.user.status(handle=handle)
+            submissions = filt.filter_subs(submissions)
+            points = 0
+            problemCount = 0
+            for submission in submissions:
+                if submission.problem.rating is None:
+                    continue
+                problemCount += 1
+                points += (submission.problem.rating//100)-7
+            if user.handle is 'shashikantg':
+                print(problemCount, points)
+            if points > 0:
+                rows.append([i, user.handle, str(problemCount), user.rating, points])
+            i += 1
+        rows.sort(key=lambda row: row[4], reverse=True)
+        for i in range(len(rows)):
+            row = rows[i]
+            row[0] = i+1 
+            rows[i] = tuple(row)
+        i = 0
+        await wait_msg.delete()
+        page = 1
+        while i<len(rows):
+            rows_to_display = rows[i : min(i+10, len(rows))]
+            img = get_leaderboard_image(rows_to_display, self.font)
+            buffer = io.BytesIO()
+            img.save(buffer, 'png')
+            buffer.seek(0)
+            msg = "Weekly Leaderboard" if i is 0 else None
+            await ctx.send(msg, file=discord.File(buffer, 'leaderboard_p'+str(page)+'.png'))   
+            page+=1
+            i+=10
+            if page==3:
+                break
+
 
     @commands.command(brief='Create a mashup', usage='[handles] [+tags] [?[-]delta]')
     async def mashup(self, ctx, *args):
