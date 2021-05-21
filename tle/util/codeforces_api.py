@@ -221,7 +221,7 @@ def _bool_to_str(value):
 
 def cf_ratelimit(f):
     tries = 3
-    per_second = 5
+    per_second = 3
     last = deque([0]*per_second)
 
     @functools.wraps(f)
@@ -241,7 +241,7 @@ def cf_ratelimit(f):
 
             try:
                 return await f(*args, **kwargs)
-            except (ClientError, CallLimitExceededError) as e:
+            except (ClientError, CallLimitExceededError, CodeforcesApiError) as e:
                 logger.info(f'Try {i+1}/{tries} at query failed.')
                 logger.info(repr(e))
                 if i < tries - 1:

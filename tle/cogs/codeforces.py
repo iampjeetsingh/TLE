@@ -284,8 +284,6 @@ class Codeforces(commands.Cog):
         rows = []
         i = 1
         for handle in handles:
-            if i%3==0:
-                time.sleep(1)
             user = cf_common.user_db.fetch_cf_user(handle)
             rating = user.rating or 1100
             rating = (rating//100)*100
