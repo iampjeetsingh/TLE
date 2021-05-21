@@ -689,7 +689,7 @@ class CacheSystem:
         await self.problemset_cache.run()
 
     @staticmethod
-    @cached(ttl=30 * 60)
+    @cached(ttl=3 * 60)
     async def getUsersEffectiveRating(*, activeOnly=None):
         """ Returns a dictionary mapping user handle to his effective rating for all the users.
         """
