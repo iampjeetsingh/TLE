@@ -284,7 +284,7 @@ class Codeforces(commands.Cog):
         rows = []
         i = 1
         for handle in handles:
-            if i%4==0:
+            if i%3==0:
                 time.sleep(1)
             user = cf_common.user_db.fetch_cf_user(handle)
             rating = user.rating or 1100
@@ -300,9 +300,7 @@ class Codeforces(commands.Cog):
                     continue
                 problemCount += 1
                 points += (submission.problem.rating//100)-7
-            if user.handle is 'shashikantg':
-                print(problemCount, points)
-            if points > 0:
+            if points > 5:
                 rows.append([i, user.handle, str(problemCount), user.rating, points])
             i += 1
         rows.sort(key=lambda row: row[4], reverse=True)
@@ -319,7 +317,7 @@ class Codeforces(commands.Cog):
             buffer = io.BytesIO()
             img.save(buffer, 'png')
             buffer.seek(0)
-            msg = "Weekly Leaderboard" if i is 0 else None
+            msg = "Weekly Leaderboard" if i==0 else None
             await ctx.send(msg, file=discord.File(buffer, 'leaderboard_p'+str(page)+'.png'))   
             page+=1
             i+=10
