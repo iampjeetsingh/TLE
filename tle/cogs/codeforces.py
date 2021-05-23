@@ -77,7 +77,7 @@ def get_leaderboard_image(rows, font):
 
     y = START_Y
     # draw header
-    draw_row('#', 'Username', 'Problems Solved', 'Points', BLACK, y)
+    draw_row('#', 'Username', 'Problems (Rating)', 'Points', BLACK, y)
     y += int(Y_INC * 1.5)
 
     # trim name to fit in the column width
@@ -285,21 +285,23 @@ class Codeforces(commands.Cog):
         i = 1
         for handle in handles:
             user = cf_common.user_db.fetch_cf_user(handle)
-            rating = user.rating or 1100
-            rating = (rating//100)*100
-            print(user.handle, rating)
-            rating = max(rating, 1100)
             submissions = await cf.user.status(handle=handle)
             submissions = filt.filter_subs(submissions)
             points = 0
             problemCount = 0
+            averageRating = 0
             for submission in submissions:
                 if submission.problem.rating is None:
                     continue
                 problemCount += 1
+                averageRating += submission.problem.rating
                 points += (submission.problem.rating//100)-7
             if points > 5:
-                rows.append([i, user.handle, str(problemCount), user.rating, points])
+                averageRating /= problemCount
+                mod = averageRating%100
+                averageRating = (averageRating//100)*100
+                averageRating += 100 if mod>50 else 0 
+                rows.append([i, user.handle, str(problemCount)+" ("+str(int(averageRating))+")", user.rating, points])
             i += 1
         rows.sort(key=lambda row: row[4], reverse=True)
         for i in range(len(rows)):
