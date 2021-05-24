@@ -698,6 +698,7 @@ class Handles(commands.Cog):
             raise HandleCogError(f'The resource `{resource}` is not supported.')
         countries = []
         users = None
+        wait_msg = await ctx.channel.send('Fetching handle list, please wait...')
         if resource=='codeforces.com':
             res = cf_common.user_db.get_cf_users_for_guild(ctx.guild.id)
             users = [(ctx.guild.get_member(user_id), cf_user.handle, cf_user.rating)
@@ -712,7 +713,6 @@ class Handles(commands.Cog):
                 members[handle] = ctx.guild.get_member(user_id)
             clist_users = await clist.fetch_user_info(resource, handles)
             users = []
-            print(clist_users)
             for clist_user in clist_users:
                 if clist_user['handle'] not in members: continue
                 handle = clist_user['handle']
@@ -723,11 +723,12 @@ class Handles(commands.Cog):
         if not users:
             raise HandleCogError('No members with registered handles.')
 
-        users.sort(key=lambda x: (1 if x[2] is None else -x[2], x[1]))  # Sorting by (-rating, handle)
+        users.sort(key=lambda x: (1 if x[2] is None else -x[2], -x[3],x[1]))  # Sorting by (-rating,-contests, handle)
         title = 'Handles of server members '+(('('+resource+')') if resource!=None else '')
         if countries:
             title += ' from ' + ', '.join(f'`{country}`' for country in countries)
         pages = _make_pages(users, title, resource)
+        await wait_msg.delete()
         paginator.paginate(self.bot, ctx.channel, pages, wait_time=_PAGINATE_WAIT_TIME,
                            set_pagenum_footers=True)
 
