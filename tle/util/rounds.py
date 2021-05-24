@@ -9,8 +9,8 @@ class Round:
             round['start'], '%Y-%m-%dT%H:%M:%S')
         self.duration = dt.timedelta(seconds=round['duration'])
         self.url = round['href']
-        self.website = round['resource']['name']
-        self.website_id = round['resource']['id']
+        self.website = round['resource']
+        self.website_id = round['resource_id']
 
     def __str__(self):
         st = "ID = " + str(self.id) + ", "
