@@ -20,6 +20,7 @@ from discord.ext import commands
 from tle import constants
 from tle.util import cache_system2
 from tle.util import codeforces_api as cf
+from tle.util import clist_api as clist
 from tle.util import codeforces_common as cf_common
 from tle.util import discord_common
 from tle.util import events
@@ -47,6 +48,11 @@ _GITGUD_MAX_POS_DELTA_VALUE = 500
 
 _DIVISION_RATING_LOW  = (2100, 1600, -1000)
 _DIVISION_RATING_HIGH = (9999, 2099,  1599)
+_SUPPORTED_CLIST_RESOURCES = ('codechef.com', 'codeforces.com', 'atcoder.jp',
+ 'leetcode.com','codingcompetitions.withgoogle.com', 'facebook.com/hackercup')
+_CLIST_RESOURCE_SHORT_FORMS = {'cc':'codechef.com', 'cf':'codeforces.com',
+ 'ac':'atcoder.jp', 'lc':'leetcode.com', 'google':'codingcompetitions.withgoogle.com',
+ 'fb':'facebook.com/hackercup'}
 
 
 class HandleCogError(commands.CommandError):
@@ -219,7 +225,7 @@ def get_prettyhandles_image(rows, font):
     return img
 
 
-def _make_profile_embed(member, user, *, mode):
+def _make_profile_embed(member, user, handles={}, *, mode):
     assert mode in ('set', 'get')
     if mode == 'set':
         desc = f'Handle for {member.mention} successfully set to **[{user.handle}]({user.url})**'
@@ -232,6 +238,9 @@ def _make_profile_embed(member, user, *, mode):
         embed = discord.Embed(description=desc, color=user.rank.color_embed)
         embed.add_field(name='Rating', value=user.rating, inline=True)
         embed.add_field(name='Rank', value=user.rank.title, inline=True)
+        for key in handles:
+            if key=='codeforces.com': continue
+            embed.add_field(name=key, value=handles[key], inline=True)
     embed.set_thumbnail(url=f'{user.titlePhoto}')
     return embed
 
@@ -365,11 +374,33 @@ class Handles(commands.Cog):
     @commands.has_any_role(constants.TLE_ADMIN, constants.TLE_MODERATOR)
     async def set(self, ctx, member: discord.Member, handle: str):
         """Set Codeforces handle of a user."""
-        # CF API returns correct handle ignoring case, update to it
-        user, = await cf.user.info(handles=[handle])
-        await self._set(ctx, member, user)
-        embed = _make_profile_embed(member, user, mode='set')
-        await ctx.send(embed=embed)
+        embed = None
+        if ':' in handle:
+            resource = handle[0: handle.index(':')]
+            handle = handle[handle.index(':')+1:]
+            if resource=='all':
+                resource = None
+            if resource in _CLIST_RESOURCE_SHORT_FORMS:
+                resource = _CLIST_RESOURCE_SHORT_FORMS[resource]
+            if resource!=None and resource not in _SUPPORTED_CLIST_RESOURCES:
+                raise HandleCogError(f'The resource `{resource}` is not supported.')
+            users = await clist.account.info(handle=handle, resource=resource)
+            for user in users:
+                if user['resource'] not in _SUPPORTED_CLIST_RESOURCES:
+                    continue
+                await self._set_account_id(ctx, member, user)
+        else:
+            # CF API returns correct handle ignoring case, update to it
+            user, = await cf.user.info(handles=[handle])
+            await self._set(ctx, member, user)
+        await self.get(ctx, member, settingHandle=True)
+
+    async def _set_account_id(self, ctx, member, user):
+        try:
+            cf_common.user_db.set_account_id(member.id, ctx.guild.id, user['id'], user['resource'], user['handle'])
+        except db.UniqueConstraintFailed:
+            raise HandleCogError(f'The handle `{user["handle"]}` is already associated with another user.')
+
 
     async def _set(self, ctx, member, user):
         handle = user.handle
@@ -423,13 +454,14 @@ class Handles(commands.Cog):
             await ctx.send(f'Sorry `{invoker}`, can you try again?')
 
     @handle.command(brief='Get handle by Discord username')
-    async def get(self, ctx, member: discord.Member):
+    async def get(self, ctx, member: discord.Member, settingHandle = False):
         """Show Codeforces handle of a user."""
         handle = cf_common.user_db.get_handle(member.id, ctx.guild.id)
         if not handle:
             raise HandleCogError(f'Handle for {member.mention} not found in database')
         user = cf_common.user_db.fetch_cf_user(handle)
-        embed = _make_profile_embed(member, user, mode='get')
+        handles = cf_common.user_db.get_account_id_by_user(member.id, ctx.guild.id)
+        embed = _make_profile_embed(member, user,handles=handles, mode='get' if not settingHandle else 'set')
         await ctx.send(embed=embed)
 
     @handle.command(brief='Get Discord username by cf handle')
