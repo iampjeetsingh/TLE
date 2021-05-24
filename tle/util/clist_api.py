@@ -34,22 +34,23 @@ class ClientError(ClistApiError):
 
 class TrueApiError(ClistApiError):
     """An error originating from a valid response of the API."""
-    def __init__(self, comment, message=None):
+    def __init__(self, comment=None, message=None):
         super().__init__(message)
         self.comment = comment
 
 class HandleNotFoundError(TrueApiError):
-    def __init__(self, comment, handle, resource):
-        super().__init__(comment, f'Handle `{handle}` not found{" on `"+str(resource)+"`" if resource!=None else "."}')
+    def __init__(self, handle, resource=None):
+        super().__init__(message=f'Handle `{handle}` not found{" on `"+str(resource)+"`" if resource!=None else "."}')
         self.handle = handle
 
 class CallLimitExceededError(TrueApiError):
-    def __init__(self, comment):
-        super().__init__(comment, 'Clist API call limit exceeded')
+    def __init__(self, comment=None):
+        super().__init__(message='Clist API call limit exceeded')
+        self.comment = comment
 
 def ratelimit(f):
-    tries = 3
-    per_second = 3
+    tries = 5
+    per_second = 1
     last = deque([0]*per_second)
 
     @functools.wraps(f)
@@ -63,8 +64,8 @@ def ratelimit(f):
             last.popleft()
 
             # Delay as needed
-            delay = next_valid - now
-            if delay > 0:
+            delay = 15
+            if i > 0:
                 await asyncio.sleep(delay)
 
             try:
@@ -81,7 +82,7 @@ def ratelimit(f):
 
 
 @ratelimit
-async def _query_clist_api(path, data=None):
+async def _query_clist_api(path, data={}):
     url = URL_BASE + path
     clist_token = os.getenv('CLIST_API_TOKEN')
     url += '?'+ str(urlencode(data))
@@ -94,8 +95,7 @@ async def _query_clist_api(path, data=None):
                 raise CallLimitExceededError
             else:
                 raise ClistApiError
-        resp = resp.json()
-        return resp['objects']
+        return resp.json()
     except Exception as e:
         logger.error(f'Request to Clist API encountered error: {e!r}')
         raise ClientError from e
@@ -144,14 +144,42 @@ def cache(forced=False):
     with open(db_file, 'w') as f:
         json.dump(db, f)
 
-class account:
-    @staticmethod
-    async def info(handle, resource):
-        params = {'total_count': True, 'handle':handle} 
-        if resource!=None:
-            params['resource'] = resource
-        resp = await _query_clist_api('account', params)
-        if len(resp)==0:
-            comment = 'Handle `'+str(handle)+'` not found on '+str(resource)
-            raise HandleNotFoundError(comment=comment, handle=handle, resource=resource) 
-        return resp
+async def account(handle, resource):
+    params = {'total_count': True, 'handle':handle} 
+    if resource!=None:
+        params['resource'] = resource
+    resp = await _query_clist_api('account', params)
+    if resp==None or 'objects' not in resp:
+        raise ClientError
+    else:
+        resp = resp['objects']
+    if len(resp)==0:
+        comment = 'Handle `'+str(handle)+'` not found on '+str(resource)
+        raise HandleNotFoundError(comment=comment, handle=handle, resource=resource) 
+    return resp
+
+async def statistics(account_id=None, contest_id=None, order_by=None):
+    params = {'limit':1000}
+    if account_id!=None: params['account_id'] = account_id
+    if contest_id!=None: params['contest_id'] = contest_id
+    if order_by!=None: params['order_by'] = order_by;
+    resp = await _query_clist_api('statistics', params)
+    if resp==None or 'objects' not in resp:
+        raise ClientError
+    else:
+        resp = resp['objects']
+    return resp
+
+async def contest(contest_id):
+    resp = await _query_clist_api('contest/'+str(contest_id))
+    return resp
+
+async def fetch_user_info(resource, handles):
+    regex = '|'.join(handles)
+    params = {'resource':resource, 'handle__regex':regex, 'limit':1000}
+    resp = await _query_clist_api('account', params)
+    if resp==None or 'objects' not in resp:
+        raise ClientError
+    else:
+        resp = resp['objects']
+    return resp

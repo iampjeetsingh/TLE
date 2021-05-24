@@ -1,6 +1,7 @@
 import sqlite3
 from enum import IntEnum
 from collections import namedtuple
+from typing import List
 
 from discord.ext import commands
 
@@ -504,11 +505,11 @@ class UserDbConn:
         return [(int(user_id), handle) for user_id, handle in res]
     
     def get_account_ids_for_resource(self, guild_id, resource):
-        query = ('SELECT user_id, account_id '
+        query = ('SELECT user_id, account_id, handle '
                  'FROM clist_account_ids '
                  'WHERE guild_id = ? AND resource = ?')
         res = self.conn.execute(query, (guild_id, resource)).fetchall()
-        return [(int(user_id), int(account_id)) for user_id, account_id in res]
+        return [(int(user_id), int(account_id), handle) for user_id, account_id, handle in res]
 
     def get_cf_users_for_guild(self, guild_id):
         query = ('SELECT u.user_id, c.handle, c.first_name, c.last_name, c.country, c.city, '
@@ -897,7 +898,7 @@ class UserDbConn:
 
     # Rated VC stuff
 
-    def create_rated_vc(self, contest_id: int, start_time: float, finish_time: float, guild_id: str, user_ids: [str]):
+    def create_rated_vc(self, contest_id: int, start_time: float, finish_time: float, guild_id: str, user_ids: List[str]):
         """ Creates a rated vc and returns its id.
         """
         query = ('INSERT INTO rated_vcs '

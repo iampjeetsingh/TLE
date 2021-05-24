@@ -48,7 +48,7 @@ _GITGUD_MAX_POS_DELTA_VALUE = 500
 
 _DIVISION_RATING_LOW  = (2100, 1600, -1000)
 _DIVISION_RATING_HIGH = (9999, 2099,  1599)
-_SUPPORTED_CLIST_RESOURCES = ('codechef.com', 'codeforces.com', 'atcoder.jp',
+_SUPPORTED_CLIST_RESOURCES = ('codechef.com', 'atcoder.jp',
  'leetcode.com','codingcompetitions.withgoogle.com', 'facebook.com/hackercup')
 _CLIST_RESOURCE_SHORT_FORMS = {'cc':'codechef.com', 'cf':'codeforces.com',
  'ac':'atcoder.jp', 'lc':'leetcode.com', 'google':'codingcompetitions.withgoogle.com',
@@ -238,30 +238,32 @@ def _make_profile_embed(member, user, handles={}, *, mode):
         embed = discord.Embed(description=desc, color=user.rank.color_embed)
         embed.add_field(name='Rating', value=user.rating, inline=True)
         embed.add_field(name='Rank', value=user.rank.title, inline=True)
-        for key in handles:
-            if key=='codeforces.com': continue
-            embed.add_field(name=key, value=handles[key], inline=True)
+    for key in handles:
+        if key=='codeforces.com': continue
+        embed.add_field(name=key, value=handles[key], inline=True)
     embed.set_thumbnail(url=f'{user.titlePhoto}')
     return embed
 
 
-def _make_pages(users, title):
+def _make_pages(users, title, resource='codeforces.com'):
     chunks = paginator.chunkify(users, _HANDLES_PER_PAGE)
     pages = []
-    done = 0
-
+    done = 1
+    no_rating = resource in ['codingcompetitions.withgoogle.com', 'facebook.com/hackercup']
+    no_rating_suffix = resource!='codeforces.com'
     style = table.Style('{:>}  {:<}  {:<}  {:<}')
     for chunk in chunks:
         t = table.Table(style)
-        t += table.Header('#', 'Name', 'Handle', 'Rating')
+        t += table.Header('#', 'Name', 'Handle', 'Contests' if no_rating else 'Rating')
         t += table.Line()
-        for i, (member, handle, rating) in enumerate(chunk):
+        for i, (member, handle, rating, n_contests) in enumerate(chunk):
             name = member.display_name
             if len(name) > _NAME_MAX_LEN:
                 name = name[:_NAME_MAX_LEN - 1] + '…'
             rank = cf.rating2rank(rating)
             rating_str = 'N/A' if rating is None else str(rating)
-            t += table.Data(i + done, name, handle, f'{rating_str} ({rank.title_abbr})')
+            fourth = n_contests if no_rating else ((f'{rating_str}')+((f'({rank.title_abbr})') if not no_rating_suffix else ''))
+            t += table.Data(i + done, name, handle, fourth)
         table_str = '```\n'+str(t)+'\n```'
         embed = discord_common.cf_color_embed(description=table_str)
         pages.append((title, embed))
@@ -384,7 +386,7 @@ class Handles(commands.Cog):
                 resource = _CLIST_RESOURCE_SHORT_FORMS[resource]
             if resource!=None and resource not in _SUPPORTED_CLIST_RESOURCES:
                 raise HandleCogError(f'The resource `{resource}` is not supported.')
-            users = await clist.account.info(handle=handle, resource=resource)
+            users = await clist.account(handle=handle, resource=resource)
             for user in users:
                 if user['resource'] not in _SUPPORTED_CLIST_RESOURCES:
                     continue
@@ -684,25 +686,48 @@ class Handles(commands.Cog):
         await ctx.send(file=discord_file)
 
     @handle.command(brief="Show all handles")
-    async def list(self, ctx, *countries):
+    async def list(self, ctx, resource='codeforces.com'):
         """Shows members of the server who have registered their handles and
         their Codeforces ratings. You can additionally specify a list of countries
         if you wish to display only members from those countries. Country data is
         sourced from codeforces profiles. e.g. ;handle list Croatia Slovenia
         """
-        countries = [country.title() for country in countries]
-        res = cf_common.user_db.get_cf_users_for_guild(ctx.guild.id)
-        users = [(ctx.guild.get_member(user_id), cf_user.handle, cf_user.rating)
-                 for user_id, cf_user in res if not countries or cf_user.country in countries]
-        users = [(member, handle, rating) for member, handle, rating in users if member is not None]
+        if resource in _CLIST_RESOURCE_SHORT_FORMS:
+            resource = _CLIST_RESOURCE_SHORT_FORMS[resource]
+        if resource!='codeforces.com' and resource not in _SUPPORTED_CLIST_RESOURCES:
+            raise HandleCogError(f'The resource `{resource}` is not supported.')
+        countries = []
+        users = None
+        if resource=='codeforces.com':
+            res = cf_common.user_db.get_cf_users_for_guild(ctx.guild.id)
+            users = [(ctx.guild.get_member(user_id), cf_user.handle, cf_user.rating)
+                    for user_id, cf_user in res if not countries or cf_user.country in countries]
+            users = [(member, handle, rating, 0) for member, handle, rating in users if member is not None]
+        else:
+            handles = []
+            account_ids = cf_common.user_db.get_account_ids_for_resource(ctx.guild.id ,resource)
+            members = {}
+            for user_id, account_id, handle in account_ids:
+                handles.append(handle)
+                members[handle] = ctx.guild.get_member(user_id)
+            clist_users = await clist.fetch_user_info(resource, handles)
+            users = []
+            print(clist_users)
+            for clist_user in clist_users:
+                if clist_user['handle'] not in members: continue
+                handle = clist_user['handle']
+                rating = int(clist_user['rating']) if clist_user['rating']!=None else None
+                member = members[handle]
+                n_contests = clist_user['n_contests']
+                users.append((member, handle, rating, n_contests))
         if not users:
             raise HandleCogError('No members with registered handles.')
 
         users.sort(key=lambda x: (1 if x[2] is None else -x[2], x[1]))  # Sorting by (-rating, handle)
-        title = 'Handles of server members'
+        title = 'Handles of server members '+(('('+resource+')') if resource!=None else '')
         if countries:
             title += ' from ' + ', '.join(f'`{country}`' for country in countries)
-        pages = _make_pages(users, title)
+        pages = _make_pages(users, title, resource)
         paginator.paginate(self.bot, ctx.channel, pages, wait_time=_PAGINATE_WAIT_TIME,
                            set_pagenum_footers=True)
 

@@ -5,6 +5,7 @@ import logging
 import time
 import datetime as dt
 from collections import defaultdict, namedtuple
+from typing import List
 
 import discord
 from discord.ext import commands
@@ -14,6 +15,7 @@ from tle import constants
 from tle.util import codeforces_common as cf_common
 from tle.util import cache_system2
 from tle.util import codeforces_api as cf
+from tle.util import clist_api as clist
 from tle.util import db
 from tle.util import discord_common
 from tle.util import events
@@ -98,65 +100,7 @@ class Contests(commands.Cog):
 
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    @commands.Cog.listener()
-    @discord_common.once
-    async def on_ready(self):
-        self._update_task.start()
-        self._watch_rated_vcs_task.start()
-
-    @tasks.task_spec(name='ContestCogUpdate',
-                     waiter=tasks.Waiter.for_event(events.ContestListRefresh))
-    async def _update_task(self, _):
-        contest_cache = cf_common.cache2.contest_cache
-        self.future_contests = contest_cache.get_contests_in_phase('BEFORE')
-        self.active_contests = (contest_cache.get_contests_in_phase('CODING') +
-                                contest_cache.get_contests_in_phase('PENDING_SYSTEM_TEST') +
-                                contest_cache.get_contests_in_phase('SYSTEM_TEST'))
-        self.finished_contests = contest_cache.get_contests_in_phase('FINISHED')
-
-        # Future contests already sorted by start time.
-        self.active_contests.sort(key=lambda contest: contest.startTimeSeconds)
-        self.finished_contests.sort(key=lambda contest: contest.end_time, reverse=True)
-        # Keep most recent _FINISHED_LIMIT
-        self.finished_contests = self.finished_contests[:_FINISHED_CONTESTS_LIMIT]
-
-        self.logger.info(f'Refreshed cache')
-        self.start_time_map.clear()
-        for contest in self.future_contests:
-            if not cf_common.is_nonstandard_contest(contest):
-                # Exclude non-standard contests from reminders.
-                self.start_time_map[contest.startTimeSeconds].append(contest)
-        self._reschedule_all_tasks()
-
-    def _reschedule_all_tasks(self):
-        for guild in self.bot.guilds:
-            self._reschedule_tasks(guild.id)
-
-    def _reschedule_tasks(self, guild_id):
-        for task in self.task_map[guild_id]:
-            task.cancel()
-        self.task_map[guild_id].clear()
-        self.logger.info(f'Tasks for guild {guild_id} cleared')
-        if not self.start_time_map:
-            return
-        try:
-            settings = cf_common.user_db.get_reminder_settings(guild_id)
-        except db.DatabaseDisabledError:
-            return
-        if settings is None:
-            return
-        channel_id, role_id, before = settings
-        channel_id, role_id, before = int(channel_id), int(role_id), json.loads(before)
-        guild = self.bot.get_guild(guild_id)
-        channel, role = guild.get_channel(channel_id), guild.get_role(role_id)
-        for start_time, contests in self.start_time_map.items():
-            for before_mins in before:
-                before_secs = 60 * before_mins
-                task = asyncio.create_task(
-                    _send_reminder_at(channel, role, contests, before_secs, start_time - before_secs))
-                self.task_map[guild_id].append(task)
-        self.logger.info(f'{len(self.task_map[guild_id])} tasks scheduled for guild {guild_id}')
-
+    
     @staticmethod
     def _make_contest_pages(contests, title):
         pages = []
@@ -273,6 +217,43 @@ class Contests(commands.Cog):
             num_pages += 1
 
         return pages
+    
+    def _make_clist_standings_pages(self, standings):
+        show_rating_changes = standings[0]['rating_change']!=None
+        t = None
+        if not show_rating_changes:
+            header_style = '{:>} {:<}    {:^}  '
+            body_style   = '{:>} {:<}    {:<}  '
+            header = ['#', 'Name', 'Score']
+            body = []
+            for standing in standings:
+                tokens = [int(standing['place']), standing['name'], int(standing['score'])]
+                body.append(tokens)
+            t = table.Table(table.Style(header=header_style, body=body_style))
+            t += table.Header(*header)
+            t += table.Line('\N{EM DASH}')
+            for row in body:
+                t += table.Data(*row)
+            t += table.Line('\N{EM DASH}')
+        else:
+            header_style = '{:>} {:<}    {:^}    {:<}    {:<}  '
+            body_style   = '{:>} {:<}    {:<}    {:<}    {:<}  '
+            header = ['#', 'Name', 'Score', 'Delta', 'New Rating']
+            body = []
+            for standing in standings:
+                delta = int(standing['rating_change'])
+                delta = '+'+str(delta) if delta>0 else str(delta)
+                tokens = [int(standing['place']), standing['name'], int(standing['score']), delta, standing['new_rating']]
+                body.append(tokens)
+            t = table.Table(table.Style(header=header_style, body=body_style))
+            t += table.Header(*header)
+            t += table.Line('\N{EM DASH}')
+            for row in body:
+                t += table.Data(*row)
+            t += table.Line('\N{EM DASH}')
+        # We use yaml to get nice colors in the ranklist.
+        content = f'```yaml\n{t}\n```'
+        return content
 
     @staticmethod
     def _make_contest_embed_for_ranklist(ranklist):
@@ -317,22 +298,40 @@ class Contests(commands.Cog):
         """Shows ranklist for the contest with given contest id. If handles contains
         '+server', all server members are included. No handles defaults to '+server'.
         """
-        handles = await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True)
-        contest = cf_common.cache2.contest_cache.get_contest(contest_id)
         wait_msg = await ctx.channel.send('Generating ranklist, please wait...')
-        ranklist = None
-        try:
-            ranklist = cf_common.cache2.ranklist_cache.get_ranklist(contest)
-        except cache_system2.RanklistNotMonitored:
-            if contest.phase == 'BEFORE':
-                raise ContestCogError(f'Contest `{contest.id} | {contest.name}` has not started')
-            ranklist = await cf_common.cache2.ranklist_cache.generate_ranklist(contest.id,
-                                                                            fetch_changes=True)
-        await wait_msg.delete()
-        await ctx.channel.send(embed=self._make_contest_embed_for_ranklist(ranklist))
-        await self._show_ranklist(channel=ctx.channel, contest_id=contest_id, handles=handles, ranklist=ranklist)
+        if contest_id<0:
+            contest_id = -1*contest_id
+            contest = await clist.contest(contest_id)
+            print(contest)
+            account_ids = cf_common.user_db.get_account_ids_for_resource(ctx.guild.id ,contest['resource'])
+            standings = []
+            for user_id, account_id, handle in account_ids:
+                standing = await clist.statistics(account_id=account_id, contest_id=contest_id)
+                user = ctx.guild.get_member(user_id)
+                if len(standing)!=0:
+                    standing = standing[0]
+                    standing['name'] = user.display_name
+                    standings.append(standing)
+            standings.sort(key=lambda standing: int(standing['place']))
+            content = self._make_clist_standings_pages(standings)
+            await wait_msg.delete()
+            await ctx.channel.send(content)
+        else:
+            handles = await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True)
+            contest = cf_common.cache2.contest_cache.get_contest(contest_id)
+            ranklist = None
+            try:
+                ranklist = cf_common.cache2.ranklist_cache.get_ranklist(contest)
+            except cache_system2.RanklistNotMonitored:
+                if contest.phase == 'BEFORE':
+                    raise ContestCogError(f'Contest `{contest.id} | {contest.name}` has not started')
+                ranklist = await cf_common.cache2.ranklist_cache.generate_ranklist(contest.id,
+                                                                                fetch_changes=True)
+            await wait_msg.delete()
+            await ctx.channel.send(embed=self._make_contest_embed_for_ranklist(ranklist))
+            await self._show_ranklist(channel=ctx.channel, contest_id=contest_id, handles=handles, ranklist=ranklist)
 
-    async def _show_ranklist(self, channel, contest_id: int, handles: [str], ranklist, vc: bool = False, delete_after: float = None):
+    async def _show_ranklist(self, channel, contest_id: int, handles: List[str], ranklist, vc: bool = False, delete_after: float = None):
         contest = cf_common.cache2.contest_cache.get_contest(contest_id)
         if ranklist is None:
             raise ContestCogError('No ranklist to show')
