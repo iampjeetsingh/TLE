@@ -507,6 +507,12 @@ class Contests(commands.Cog):
         for rated_vc_id in ongoing_rated_vcs:
             await self._watch_rated_vc(rated_vc_id)
 
+    @commands.command(brief='To forcefully refresh ongoing ratedvc standings')
+    @commands.has_role(constants.TLE_ADMIN)
+    async def refresh_ratedvc(self, ctx):
+        self._watch_rated_vcs_task.start()
+        await ctx.send(embed=discord_common.embed_success('Rated VCs will be refreshed soon...'))
+
     @commands.command(brief='Unregister this user from an ongoing ratedvc', usage='@user')
     @commands.has_any_role(constants.TLE_ADMIN, constants.TLE_MODERATOR)
     async def _unregistervc(self, ctx, user: discord.Member):
