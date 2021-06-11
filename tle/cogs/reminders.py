@@ -111,6 +111,7 @@ _WEBSITE_ALLOWED_PATTERNS['atcoder.jp'] = [
     'abc:', 'arc:', 'agc:', 'grand', 'beginner', 'regular']
 _WEBSITE_ALLOWED_PATTERNS['codingcompetitions.withgoogle.com'] = ['']
 _WEBSITE_ALLOWED_PATTERNS['facebook.com/hackercup'] = ['']
+_WEBSITE_ALLOWED_PATTERNS['leetcode.com'] = ['']
 
 _WEBSITE_DISALLOWED_PATTERNS = defaultdict(list)
 _WEBSITE_DISALLOWED_PATTERNS['codeforces.com'] = [
@@ -120,13 +121,15 @@ _WEBSITE_DISALLOWED_PATTERNS['atcoder.jp'] = []
 _WEBSITE_DISALLOWED_PATTERNS['codingcompetitions.withgoogle.com'] = [
     'registration']
 _WEBSITE_DISALLOWED_PATTERNS['facebook.com/hackercup'] = []
+_WEBSITE_DISALLOWED_PATTERNS['leetcode.com'] = []
 
 _SUPPORTED_WEBSITES = [
     'codeforces.com',
     'codechef.com',
     'atcoder.jp',
     'codingcompetitions.withgoogle.com',
-    'facebook.com/hackercup'
+    'facebook.com/hackercup',
+    'leetcode.com'
 ]
 
 GuildSettings = recordtype(
