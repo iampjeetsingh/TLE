@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import time
+import os
+import requests
 import functools
 from collections import namedtuple, deque
 
@@ -417,11 +419,23 @@ class user:
 
     @staticmethod
     async def ratedList(*, activeOnly=None):
-        params = {}
-        if activeOnly is not None:
-            params['activeOnly'] = _bool_to_str(activeOnly)
-        resp = await _query_api('user.ratedList', params)
-        return [make_from_dict(User, user_dict) for user_dict in resp]
+        url = os.getenv('RATED_LIST_PROXY')
+        if url:
+            try:
+                resp = requests.get(url)
+                if resp.status_code != 200:
+                    raise CodeforcesApiError
+                resp = resp.json()
+                return [{user_dict['handle']: user_dict['rating']} for user_dict in resp]
+            except Exception as e:
+                logger.error(f'Request to Proxy API encountered error: {e!r}')
+                raise ClientError from e
+        else:
+            params = {}
+            if activeOnly is not None:
+                params['activeOnly'] = _bool_to_str(activeOnly)
+            resp = await _query_api('user.ratedList', params)
+            return [{user_dict['handle']: user_dict['rating']} for user_dict in resp]
 
     @staticmethod
     async def status(*, handle, from_=None, count=None):
