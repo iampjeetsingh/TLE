@@ -278,6 +278,38 @@ async def _query_api(path, data=None):
         raise CallLimitExceededError(comment)
     raise TrueApiError(comment)
 
+def proxy_ratelimit(f):
+    tries = 3
+    @functools.wraps(f)
+    async def wrapped(*args, **kwargs):
+        for i in range(tries):
+            await asyncio.sleep(3000*i)
+            try:
+                return await f(*args, **kwargs)
+            except (ClientError, CallLimitExceededError, CodeforcesApiError) as e:
+                logger.info(f'Try {i+1}/{tries} at proxy api failed.')
+                logger.info(repr(e))
+                if i < tries - 1:
+                    logger.info(f'Retrying...')
+                else:
+                    logger.info(f'Aborting.')
+                    raise e
+    return wrapped
+    
+@proxy_ratelimit
+async def _query_proxy(url):
+    try:
+        logger.info(f'Querying RatingList from Proxy API.')
+        resp = requests.get(url)
+        if resp.status_code != 200:
+            raise CodeforcesApiError
+        resp = resp.json()
+        logger.info(f'Fetched RatingList from Proxy API.')
+        return {user_dict['handle']: user_dict['rating'] for user_dict in resp}
+    except Exception as e:
+        logger.error(f'Request to Proxy API encountered error: {e!r}')
+        raise ClientError from e
+
 
 class contest:
     @staticmethod
@@ -421,17 +453,7 @@ class user:
     async def ratedList(*, activeOnly=None):
         url = os.getenv('RATED_LIST_PROXY')
         if url:
-            try:
-                logger.info(f'Querying RATEDLIST from Proxy API.')
-                resp = requests.get(url)
-                if resp.status_code != 200:
-                    raise CodeforcesApiError
-                resp = resp.json()
-                logger.info(f'Fetched RATEDLIST from Proxy API.')
-                return {user_dict['handle']: user_dict['rating'] for user_dict in resp}
-            except Exception as e:
-                logger.error(f'Request to Proxy API encountered error: {e!r}')
-                raise ClientError from e
+            return await _query_proxy(url)
         else:
             params = {}
             if activeOnly is not None:
