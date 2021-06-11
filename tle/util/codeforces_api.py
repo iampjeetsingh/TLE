@@ -283,7 +283,7 @@ def proxy_ratelimit(f):
     @functools.wraps(f)
     async def wrapped(*args, **kwargs):
         for i in range(tries):
-            await asyncio.sleep(3000*i)
+            await asyncio.sleep(3*i)
             try:
                 return await f(*args, **kwargs)
             except (ClientError, CallLimitExceededError, CodeforcesApiError) as e:
@@ -295,7 +295,7 @@ def proxy_ratelimit(f):
                     logger.info(f'Aborting.')
                     raise e
     return wrapped
-    
+
 @proxy_ratelimit
 async def _query_proxy(url):
     try:
