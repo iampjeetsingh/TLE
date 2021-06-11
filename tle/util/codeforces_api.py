@@ -422,11 +422,13 @@ class user:
         url = os.getenv('RATED_LIST_PROXY')
         if url:
             try:
+                logger.info(f'Querying RATEDLIST from Proxy API.')
                 resp = requests.get(url)
                 if resp.status_code != 200:
                     raise CodeforcesApiError
                 resp = resp.json()
-                return [{user_dict['handle']: user_dict['rating']} for user_dict in resp]
+                logger.info(f'Fetched RATEDLIST from Proxy API.')
+                return {user_dict['handle']: user_dict['rating'] for user_dict in resp}
             except Exception as e:
                 logger.error(f'Request to Proxy API encountered error: {e!r}')
                 raise ClientError from e
@@ -435,7 +437,8 @@ class user:
             if activeOnly is not None:
                 params['activeOnly'] = _bool_to_str(activeOnly)
             resp = await _query_api('user.ratedList', params)
-            return [{user_dict['handle']: user_dict['rating']} for user_dict in resp]
+            return {user_dict['handle']: user_dict['rating'] for user_dict in resp}
+
 
     @staticmethod
     async def status(*, handle, from_=None, count=None):
