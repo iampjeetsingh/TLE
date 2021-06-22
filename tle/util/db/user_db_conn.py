@@ -401,7 +401,6 @@ class UserDbConn:
         res = None
         with self.conn:
             res = self.conn.execute(query, user).rowcount
-        self.update()
         return res
 
     def fetch_cf_user(self, handle):

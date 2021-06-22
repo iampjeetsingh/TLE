@@ -391,7 +391,7 @@ class Codeforces(commands.Cog):
         handle, = await cf_common.resolve_handles(ctx, self.converter, ('!' + str(ctx.author),))
         user = cf_common.user_db.fetch_cf_user(handle)
         rating = round(user.effective_rating, -2)
-        rating = max(rating, 800)
+        rating = max(rating, 1200)
         submissions = await cf.user.status(handle=handle)
         solved = {sub.problem.name for sub in submissions}
         noguds = cf_common.user_db.get_noguds(ctx.message.author.id)

@@ -795,7 +795,7 @@ class Handles(commands.Cog):
         users = await cf.user.info(handles=handles)
         for user in users:
             cf_common.user_db.cache_cf_user(user)
-
+        cf_common.user_db.update();
         required_roles = {user.rank.title for user in users if user.rank != cf.UNRATED_RANK}
         rank2role = {role.name: role for role in guild.roles if role.name in required_roles}
         missing_roles = required_roles - rank2role.keys()
