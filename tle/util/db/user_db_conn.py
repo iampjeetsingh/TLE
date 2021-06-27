@@ -757,32 +757,32 @@ class UserDbConn:
 
     def get_num_duel_completed(self, userid):
         query = f'''
-            SELECT COUNT(*) FROM duel WHERE (challengee = ? OR challenger = ?) AND status == {Duel.COMPLETE}
+            SELECT COUNT(*) as Result FROM duel WHERE (challengee = ? OR challenger = ?) AND status == {Duel.COMPLETE}
         '''
         return self.conn.execute(query, (userid, userid)).fetchone()[0]
 
     def get_num_duel_draws(self, userid):
         query = f'''
-            SELECT COUNT(*) FROM duel WHERE (challengee = ? OR challenger = ?) AND winner == {Winner.DRAW}
+            SELECT COUNT(*) as Result FROM duel WHERE (challengee = ? OR challenger = ?) AND winner == {Winner.DRAW}
         '''
         return self.conn.execute(query, (userid, userid)).fetchone()[0]
 
     def get_num_duel_losses(self, userid):
         query = f'''
-            SELECT COUNT(*) FROM duel
+            SELECT COUNT(*) as Result FROM duel
             WHERE ((challengee = ? AND winner == {Winner.CHALLENGER}) OR (challenger = ? AND winner == {Winner.CHALLENGEE})) AND status = {Duel.COMPLETE}
         '''
         return self.conn.execute(query, (userid, userid)).fetchone()[0]
 
     def get_num_duel_declined(self, userid):
         query = f'''
-            SELECT COUNT(*) FROM duel WHERE challengee = ? AND status == {Duel.DECLINED}
+            SELECT COUNT(*) as Result FROM duel WHERE challengee = ? AND status == {Duel.DECLINED}
         '''
         return self.conn.execute(query, (userid,)).fetchone()[0]
 
     def get_num_duel_rdeclined(self, userid):
         query = f'''
-            SELECT COUNT(*) FROM duel WHERE challenger = ? AND status == {Duel.DECLINED}
+            SELECT COUNT(*) as Result FROM duel WHERE challenger = ? AND status == {Duel.DECLINED}
         '''
         return self.conn.execute(query, (userid,)).fetchone()[0]
 
