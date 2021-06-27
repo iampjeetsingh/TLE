@@ -794,7 +794,7 @@ class UserDbConn:
 
     def is_duelist(self, userid):
         query = '''
-            SELECT 1 FROM duelist WHERE user_id = ?
+            SELECT 1 as Result FROM duelist WHERE user_id = ?
         '''
         return self.conn.execute(query, (userid,)).fetchone()
 
