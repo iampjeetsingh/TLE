@@ -173,7 +173,10 @@ class UserDbConn:
                 guild_id TEXT PRIMARY KEY,
                 channel_id TEXT,
                 role_id TEXT,
-                before TEXT
+                before TEXT,
+                timezone TEXT,
+                website_allowed_patterns TEXT,
+                website_disallowed_patterns TEXT
             )
         ''')
         self.conn.execute(
@@ -523,18 +526,26 @@ class UserDbConn:
 
     def get_reminder_settings(self, guild_id):
         query = '''
-            SELECT channel_id, role_id, before
+            SELECT channel_id, role_id, before, timezone, website_allowed_patterns, website_disallowed_patterns
             FROM reminder
             WHERE guild_id = ?
         '''
         return self.conn.execute(query, (guild_id,)).fetchone()
 
-    def set_reminder_settings(self, guild_id, channel_id, role_id, before):
+    def set_reminder_settings(self, guild_id, channel_id, role_id, before, timezone, website_allowed_patterns, website_disallowed_patterns):
         query = '''
-            INSERT OR REPLACE INTO reminder (guild_id, channel_id, role_id, before)
-            VALUES (?, ?, ?, ?)
+            INSERT OR REPLACE INTO reminder (guild_id, channel_id, role_id, before, timezone, website_allowed_patterns, website_disallowed_patterns)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         '''
-        self.conn.execute(query, (guild_id, channel_id, role_id, before))
+        self.conn.execute(query, (guild_id, channel_id, role_id, before, timezone, website_allowed_patterns, website_disallowed_patterns))
+        self.conn.commit()
+        self.update()
+
+    def set_time_zone(self, guild_id, timezone):
+        query = '''
+            UPDATE reminder SET timezone = ? WHERE guild_id = ?
+        '''
+        self.conn.execute(query, (timezone, guild_id))
         self.conn.commit()
         self.update()
 
