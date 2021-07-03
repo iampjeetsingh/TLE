@@ -508,13 +508,13 @@ class Contests(commands.Cog):
             await self._watch_rated_vc(rated_vc_id)
 
     @commands.command(brief='To forcefully refresh ongoing ratedvc standings')
-    @commands.has_role(constants.TLE_ADMIN)
+    @commands.check_any(commands.has_role('Admin'), commands.is_owner())
     async def refresh_ratedvc(self, ctx):
         self._watch_rated_vcs_task.start()
         await ctx.send(embed=discord_common.embed_success('Rated VCs will be refreshed soon...'))
 
     @commands.command(brief='Unregister this user from an ongoing ratedvc', usage='@user')
-    @commands.has_any_role(constants.TLE_ADMIN, constants.TLE_MODERATOR)
+    @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
     async def _unregistervc(self, ctx, user: discord.Member):
         """ Unregister this user from an ongoing ratedvc.
         """
@@ -525,7 +525,7 @@ class Contests(commands.Cog):
         await ctx.send(embed=discord_common.embed_success(f'Successfully unregistered {user.mention} from the ongoing vc.'))
 
     @commands.command(brief='Set the rated vc channel to the current channel')
-    @commands.has_role(constants.TLE_ADMIN)
+    @commands.check_any(commands.has_role('Admin'), commands.is_owner())
     async def set_ratedvc_channel(self, ctx):
         """ Sets the rated vc channel to the current channel.
         """

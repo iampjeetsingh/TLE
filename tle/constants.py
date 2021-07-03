@@ -25,7 +25,6 @@ ALL_DIRS = (attrib_value for attrib_name, attrib_value in list(globals().items()
 
 ALLOW_DUEL_SELF_REGISTER = False
 
-TLE_ADMIN = os.environ.get('TLE_ADMIN', 'Moderator')
 TLE_MODERATOR = os.environ.get('TLE_MODERATOR', 'Moderator')
 
 CONTESTS_DB_FILE_PATH = os.path.join(DATA_DIR, 'contests.json')
