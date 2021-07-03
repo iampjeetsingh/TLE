@@ -307,6 +307,7 @@ class Handles(commands.Cog):
         active_ids = [m.id for m in ctx.guild.members]
         cf_common.user_db.reset_status(gid)
         rc = sum(cf_common.user_db.update_status(gid, chunk) for chunk in paginator.chunkify(active_ids, 100))
+        cf_common.user_db.update()
         await ctx.send(f'{rc} members active with handle')
 
     @commands.Cog.listener()

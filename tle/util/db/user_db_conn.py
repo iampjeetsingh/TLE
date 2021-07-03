@@ -890,7 +890,6 @@ class UserDbConn:
         '''
         self.conn.execute(inactive_query, (id,))
         self.conn.commit()
-        self.update()
 
     def update_status(self, guild_id: str, active_ids: list):
         placeholders = ', '.join(['?'] * len(active_ids))
@@ -903,7 +902,6 @@ class UserDbConn:
         '''.format(placeholders)
         rc = self.conn.execute(active_query, (*active_ids, guild_id)).rowcount
         self.conn.commit()
-        self.update()
         return rc
 
     # Rated VC stuff
