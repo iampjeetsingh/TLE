@@ -27,9 +27,8 @@ from tle.util import codeforces_common as cf_common
 
 _CONTESTS_PER_PAGE = 5
 _CONTEST_PAGINATE_WAIT_TIME = 5 * 60
-_FINISHED_CONTESTS_LIMIT = 5
+_FINISHED_CONTESTS_LIMIT = 10
 _CONTEST_REFRESH_PERIOD = 10 * 60  # seconds
-_GUILD_SETTINGS_BACKUP_PERIOD = 6 * 60 * 60  # seconds
 
 _PYTZ_TIMEZONES_GIST_URL = ('https://gist.github.com/heyalexej/'
                             '8bf688fd67d7199be4a1682b3eec7568')
@@ -616,8 +615,10 @@ class Reminders(commands.Cog):
     @clist.command(brief='List recent finished contests')
     async def finished(self, ctx):
         """List recently concluded contests."""
-        contests = self.get_guild_contests(
-            self.finished_contests, ctx.guild.id)
+        contests = copy.deepcopy(self.get_guild_contests(
+            self.finished_contests, ctx.guild.id))
+        for contest in contests:
+            contest.name += " (ID : "+str(contest.id)+")"
         await self._send_contest_list(ctx, contests,
                                       title='Recently finished contests',
                                       empty_msg='No finished contests found'
