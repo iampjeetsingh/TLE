@@ -229,7 +229,7 @@ class Contests(commands.Cog):
             header = ['#', 'Name', 'Score']
             body = []
             for standing in standings:
-                tokens = [int(standing['place']), standing['handle'], int(standing['score']) if 'score' in standing else 0]
+                tokens = [int(standing['place']), standing['handle'], int(standing['score']) if standing['score'] is not None else 0]
                 body.append(tokens)
             t = table.Table(table.Style(header=header_style, body=body_style))
             t += table.Header(*header)
@@ -245,7 +245,7 @@ class Contests(commands.Cog):
             for standing in standings:
                 delta = int(standing['rating_change'])
                 delta = '+'+str(delta) if delta>0 else str(delta)
-                tokens = [int(standing['place']), standing['handle'], int(standing['score']) if 'score' in standing else 0, delta, standing['new_rating']]
+                tokens = [int(standing['place']), standing['handle'], int(standing['score']) if standing['score'] is not None else 0, delta, standing['new_rating']]
                 body.append(tokens)
             t = table.Table(table.Style(header=header_style, body=body_style))
             t += table.Header(*header)
@@ -321,7 +321,7 @@ class Contests(commands.Cog):
             for standing in standings:
                 account_id = standing['account_id']
                 if account_id in handles_map:
-                    if standing is not None and 'place' in standing:
+                    if standing is not None and standing['place'] is not None:
                         standings_to_show.append(standing)
             standings_to_show.sort(key=lambda standing: int(standing['place']))
             content = self._make_clist_standings_pages(standings_to_show)
