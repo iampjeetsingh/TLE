@@ -49,7 +49,7 @@ class CallLimitExceededError(TrueApiError):
         self.comment = comment
 
 def ratelimit(f):
-    tries = 5
+    tries = 3
     per_second = 1
     last = deque([0]*per_second)
 
@@ -65,14 +65,12 @@ def ratelimit(f):
 
             # Delay as needed
             delay = 15
-            if i > 0:
-                await asyncio.sleep(delay)
+            await asyncio.sleep(delay*i)
 
             try:
                 return await f(*args, **kwargs)
             except (ClientError, CallLimitExceededError, ClistApiError) as e:
                 logger.info(f'Try {i+1}/{tries} at query failed.')
-                logger.info(repr(e))
                 if i < tries - 1:
                     logger.info(f'Retrying...')
                 else:
@@ -82,12 +80,15 @@ def ratelimit(f):
 
 
 @ratelimit
-async def _query_clist_api(path, data={}):
+async def _query_clist_api(path, data):
     url = URL_BASE + path
     clist_token = os.getenv('CLIST_API_TOKEN')
-    url += '?'+ str(urlencode(data))
+    if data is None:
+        url += '?'+clist_token
+    else:
+        url += '?'+ str(urlencode(data))
+        url+='&'+clist_token
     print("Calling Clist : "+url)
-    url+='&'+clist_token
     try:
         resp = requests.get(url)
         if resp.status_code != 200:
@@ -162,16 +163,27 @@ async def statistics(account_id=None, contest_id=None, order_by=None):
     params = {'limit':1000}
     if account_id!=None: params['account_id'] = account_id
     if contest_id!=None: params['contest_id'] = contest_id
-    if order_by!=None: params['order_by'] = order_by;
-    resp = await _query_clist_api('statistics', params)
-    if resp==None or 'objects' not in resp:
-        raise ClientError
-    else:
-        resp = resp['objects']
-    return resp
+    if order_by!=None: params['order_by'] = order_by
+    results = []
+    offset = 0
+    while True:
+        params['offset'] = offset
+        resp = await _query_clist_api('statistics', params)
+        if resp==None or 'objects' not in resp:
+            if offset==0:
+                raise ClientError
+            else:
+                break
+        else:
+            objects = resp['objects']
+            results += objects
+            if(len(objects)<1000):
+                break
+        offset+=1000
+    return results
 
 async def contest(contest_id):
-    resp = await _query_clist_api('contest/'+str(contest_id))
+    resp = await _query_clist_api('contest/'+str(contest_id), None)
     return resp
 
 async def fetch_user_info(resource, handles):

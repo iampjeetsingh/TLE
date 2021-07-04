@@ -227,7 +227,7 @@ class Contests(commands.Cog):
             header = ['#', 'Name', 'Score']
             body = []
             for standing in standings:
-                tokens = [int(standing['place']), standing['name'], int(standing['score'])]
+                tokens = [int(standing['place']), standing['handle'], int(standing['score'])]
                 body.append(tokens)
             t = table.Table(table.Style(header=header_style, body=body_style))
             t += table.Header(*header)
@@ -243,7 +243,7 @@ class Contests(commands.Cog):
             for standing in standings:
                 delta = int(standing['rating_change'])
                 delta = '+'+str(delta) if delta>0 else str(delta)
-                tokens = [int(standing['place']), standing['name'], int(standing['score']), delta, standing['new_rating']]
+                tokens = [int(standing['place']), standing['handle'], int(standing['score']), delta, standing['new_rating']]
                 body.append(tokens)
             t = table.Table(table.Style(header=header_style, body=body_style))
             t += table.Header(*header)
@@ -298,22 +298,25 @@ class Contests(commands.Cog):
         """Shows ranklist for the contest with given contest id. If handles contains
         '+server', all server members are included. No handles defaults to '+server'.
         """
-        wait_msg = await ctx.channel.send('Generating ranklist, please wait...')
+        msg = "Generating ranklist, please wait..."
+        if contest_id<0 : msg += "\nThis will take few minutes, sit back and relax."
+        wait_msg = await ctx.channel.send(msg)
         if contest_id<0:
             contest_id = -1*contest_id
             contest = await clist.contest(contest_id)
-            print(contest)
-            account_ids = cf_common.user_db.get_account_ids_for_resource(ctx.guild.id ,contest['resource'])
-            standings = []
-            for user_id, account_id, handle in account_ids:
-                standing = await clist.statistics(account_id=account_id, contest_id=contest_id)
-                user = ctx.guild.get_member(user_id)
-                if len(standing)!=0:
-                    standing = standing[0]
-                    standing['name'] = user.display_name
-                    standings.append(standing)
-            standings.sort(key=lambda standing: int(standing['place']))
-            content = self._make_clist_standings_pages(standings)
+            handles = cf_common.user_db.get_account_ids_for_resource(ctx.guild.id ,contest['resource'])
+            handles_map = {}
+            for user_id, account_id, handle in handles:
+                handles_map[account_id] = True
+            standings = await clist.statistics(contest_id=contest_id)
+            standings_to_show = []
+            for standing in standings:
+                account_id = standing['account_id']
+                if account_id in handles_map:
+                    if len(standing)!=0:
+                        standings_to_show.append(standing)
+            standings_to_show.sort(key=lambda standing: int(standing['place']))
+            content = self._make_clist_standings_pages(standings_to_show)
             await wait_msg.delete()
             await ctx.channel.send(content)
         else:
