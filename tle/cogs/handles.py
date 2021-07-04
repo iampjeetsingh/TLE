@@ -407,8 +407,10 @@ class Handles(commands.Cog):
         for member in guild.members:
                 handle = cf_common.user_db.get_handle(member.id, guild.id)
                 if handle:
-                    await self.set(ctx, member, "all:"+str(handle))
-            
+                    try:
+                        await self.set(ctx, member, "all:"+str(handle))
+                    except clist.HandleNotFoundError:
+                        pass            
 
     async def _set_account_id(self, member_id, guild_id, user):
         try:
