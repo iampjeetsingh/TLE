@@ -143,8 +143,7 @@ async def account(handle, resource):
     else:
         resp = resp['objects']
     if len(resp)==0:
-        comment = 'Handle `'+str(handle)+'` not found on '+str(resource)
-        raise HandleNotFoundError(comment=comment, handle=handle, resource=resource) 
+        raise HandleNotFoundError(handle=handle, resource=resource) 
     return resp
 
 async def statistics(account_id=None, contest_id=None, order_by=None):
