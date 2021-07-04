@@ -323,7 +323,7 @@ class Contests(commands.Cog):
                 if account_id in handles_map:
                     if standing is not None:
                         standings_to_show.append(standing)
-            standings_to_show.sort(key=lambda standing: int(standing['place']) if standing['place'] else 0)
+            standings_to_show.sort(key=lambda standing: int(standing['place']) if 'place' in standing else 0)
             content = self._make_clist_standings_pages(standings_to_show)
             await wait_msg.delete()
             await ctx.channel.send(embed=self._make_contest_embed_for_cranklist(contest))
