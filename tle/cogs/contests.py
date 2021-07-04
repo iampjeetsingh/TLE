@@ -219,6 +219,8 @@ class Contests(commands.Cog):
         return pages
     
     def _make_clist_standings_pages(self, standings):
+        if standings is None or len(standings)==0:
+            return "```No handles found inside ranklist```"
         show_rating_changes = standings[0]['rating_change']!=None
         t = None
         if not show_rating_changes:
@@ -319,9 +321,9 @@ class Contests(commands.Cog):
             for standing in standings:
                 account_id = standing['account_id']
                 if account_id in handles_map:
-                    if len(standing)!=0:
+                    if standing is not None:
                         standings_to_show.append(standing)
-            standings_to_show.sort(key=lambda standing: int(standing['place']))
+            standings_to_show.sort(key=lambda standing: int(standing['place']) if standing['place'] else 0)
             content = self._make_clist_standings_pages(standings_to_show)
             await wait_msg.delete()
             await ctx.channel.send(embed=self._make_contest_embed_for_cranklist(contest))
