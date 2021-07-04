@@ -240,7 +240,9 @@ def _make_profile_embed(member, user, handles={}, *, mode):
         embed.add_field(name='Rank', value=user.rank.title, inline=True)
     for key in handles:
         if key=='codeforces.com': continue
-        embed.add_field(name=key, value=handles[key], inline=True)
+        title = key
+        if key=="codingcompetitions.withgoogle.com": title = "google"
+        embed.add_field(name=title, value=handles[key], inline=True)
     embed.set_thumbnail(url=f'{user.titlePhoto}')
     return embed
 
@@ -391,16 +393,36 @@ class Handles(commands.Cog):
             for user in users:
                 if user['resource'] not in _SUPPORTED_CLIST_RESOURCES:
                     continue
-                await self._set_account_id(ctx, member, user)
+                await self._set_account_id(member.id, ctx.guid.id, user)
         else:
             # CF API returns correct handle ignoring case, update to it
             user, = await cf.user.info(handles=[handle])
             await self._set(ctx, member, user)
         await self.get(ctx, member, settingHandle=True)
+    
+    @handle.command(brief='Resolve handles of other sites using codeforces handles')
+    @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
+    async def _sync_all(self, ctx):
+        guild = ctx.guild
+        handles = []
+        members = {}
+        for member in guild.members:
+            handle = cf_common.user_db.get_handle(member.id, guild.id)
+            if handle:
+                handles.append(handle)
+                members[handle] = member
+        users = await clist.fetch_user_info(None, handles)
+        for user in users:
+            if user['resource'] in _SUPPORTED_CLIST_RESOURCES:
+                if user['handle'] in members:
+                    member = members[user['handle']]
+                    self._set_account_id(member.id, guild.id, user)
+        await ctx.send("Synced handles...")
+            
 
-    async def _set_account_id(self, ctx, member, user):
+    async def _set_account_id(self, member_id, guild_id, user):
         try:
-            cf_common.user_db.set_account_id(member.id, ctx.guild.id, user['id'], user['resource'], user['handle'])
+            cf_common.user_db.set_account_id(member_id, guild_id, user['id'], user['resource'], user['handle'])
         except db.UniqueConstraintFailed:
             raise HandleCogError(f'The handle `{user["handle"]}` is already associated with another user.')
 

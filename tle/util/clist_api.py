@@ -49,24 +49,12 @@ class CallLimitExceededError(TrueApiError):
         self.comment = comment
 
 def ratelimit(f):
-    tries = 3
-    per_second = 1
-    last = deque([0]*per_second)
-
+    tries = 5
     @functools.wraps(f)
     async def wrapped(*args, **kwargs):
         for i in range(tries):
-            now = time.time()
-
-            # Next valid slot is 1s after the `per_second`th last request
-            next_valid = max(now, 1 + last[0])
-            last.append(next_valid)
-            last.popleft()
-
-            # Delay as needed
-            delay = 15
+            delay = 10
             await asyncio.sleep(delay*i)
-
             try:
                 return await f(*args, **kwargs)
             except (ClientError, CallLimitExceededError, ClistApiError) as e:
