@@ -254,6 +254,12 @@ class Contests(commands.Cog):
         # We use yaml to get nice colors in the ranklist.
         content = f'```yaml\n{t}\n```'
         return content
+    
+    @staticmethod
+    def _make_contest_embed_for_cranklist(contest):
+        embed = discord_common.cf_color_embed(title=contest['event'], url=contest['href'])
+        embed.add_field(name='Website', value=contest['resource'])
+        return embed
 
     @staticmethod
     def _make_contest_embed_for_ranklist(ranklist):
@@ -318,6 +324,7 @@ class Contests(commands.Cog):
             standings_to_show.sort(key=lambda standing: int(standing['place']))
             content = self._make_clist_standings_pages(standings_to_show)
             await wait_msg.delete()
+            await ctx.channel.send(embed=self._make_contest_embed_for_cranklist(contest))
             await ctx.channel.send(content)
         else:
             handles = await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True)
