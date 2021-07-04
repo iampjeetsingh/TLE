@@ -393,7 +393,7 @@ class Handles(commands.Cog):
             for user in users:
                 if user['resource'] not in _SUPPORTED_CLIST_RESOURCES:
                     continue
-                await self._set_account_id(member.id, ctx.guid.id, user)
+                await self._set_account_id(member.id, ctx.guild.id, user)
         else:
             # CF API returns correct handle ignoring case, update to it
             user, = await cf.user.info(handles=[handle])
@@ -402,22 +402,12 @@ class Handles(commands.Cog):
     
     @handle.command(brief='Resolve handles of other sites using codeforces handles')
     @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
-    async def _sync_all(self, ctx):
+    async def sync_all(self, ctx):
         guild = ctx.guild
-        handles = []
-        members = {}
         for member in guild.members:
-            handle = cf_common.user_db.get_handle(member.id, guild.id)
-            if handle:
-                handles.append(handle)
-                members[handle] = member
-        users = await clist.fetch_user_info(None, handles)
-        for user in users:
-            if user['resource'] in _SUPPORTED_CLIST_RESOURCES:
-                if user['handle'] in members:
-                    member = members[user['handle']]
-                    self._set_account_id(member.id, guild.id, user)
-        await ctx.send("Synced handles...")
+                handle = cf_common.user_db.get_handle(member.id, guild.id)
+                if handle:
+                    await self.set(ctx, member, "all:"+str(handle))
             
 
     async def _set_account_id(self, member_id, guild_id, user):
