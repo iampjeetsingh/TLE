@@ -522,6 +522,11 @@ class UserDbConn:
         res = None
         with self.conn:
             res = self.conn.execute(query, (user_id, guild_id)).rowcount
+        query = ('DELETE FROM clist_account_ids '
+                 'WHERE user_id = ? AND guild_id = ?')
+        res = None
+        with self.conn:
+            res = self.conn.execute(query, (user_id, guild_id)).rowcount
         self.update()
         return res
 

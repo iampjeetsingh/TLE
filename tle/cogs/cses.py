@@ -104,7 +104,7 @@ class CSES(commands.Cog):
     def shortest_individual(self, handles):
         return self.leaderboard_individual(self.short_placings, handles)
 
-    @commands.command(brief='Shows compiled CSES leaderboard', usage='[handles...]')
+    @commands.command(brief='Shows compiled CSES leaderboard', usage='[handles...]', hidden=True)
     async def cses(self, ctx, *handles: str):
         """Shows compiled CSES leaderboard. If handles are given, leaderboard will contain only those indicated handles, otherwise leaderboard will contain overall top ten."""
         if not handles:
@@ -115,7 +115,7 @@ class CSES(commands.Cog):
             handles = set(handles)
             await ctx.send('```\n' 'Fastest\n' + self.fastest_individual(handles) + '\n\n' + 'Shortest\n' + self.shortest_individual(handles) + '\n' + '```')
 
-    @commands.command(brief='Force update the CSES leaderboard')
+    @commands.command(brief='Force update the CSES leaderboard', hidden=True)
     async def _updatecses(self, ctx):
         """Shows compiled CSES leaderboard."""
         if self.reloading:

@@ -314,13 +314,17 @@ class Contests(commands.Cog):
             contest = await clist.contest(contest_id)
             all_handles = []
             all_account_ids = []
-            if handles is None:
+            if handles is None or len(handles)==0:
                 handle_list = cf_common.user_db.get_account_ids_for_resource(ctx.guild.id ,contest['resource'])
                 for user_id, account_id, handle in handle_list:
                     all_account_ids.append(account_id)
             else:
                 for handle in handles:
                     if handle=='+server':
+                        handle_list = cf_common.user_db.get_account_ids_for_resource(ctx.guild.id ,contest['resource'])
+                        for user_id, account_id, handle in handle_list:
+                            all_account_ids.append(account_id)
+                    elif handle=='+brute':
                         li = cf_common.user_db.get_all_handles(ctx.guild.id)
                         if li is not None:
                             for h in li: all_handles.append(h)
@@ -335,7 +339,7 @@ class Contests(commands.Cog):
             standings = await clist.statistics(contest_id=contest_id)
             standings_to_show = []
             for standing in standings:
-                if standing['handle'] in all_handles or standing['account_id'] in all_account_ids:
+                if (standing['handle'] in all_handles) or (standing['account_id'] in all_account_ids):
                     if standing is not None and standing['place'] is not None:
                         standings_to_show.append(standing)
             standings_to_show.sort(key=lambda standing: int(standing['place']))
@@ -344,7 +348,24 @@ class Contests(commands.Cog):
             await ctx.channel.send(embed=self._make_contest_embed_for_cranklist(contest))
             await ctx.channel.send(content)
         else:
-            handles = await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True)
+            all_handles = []
+            handles = list(handles)
+            for handle in handles:
+                if handle=='+server':
+                    pass
+                elif handle=='+brute':
+                    handles.remove(handle)
+                    li = cf_common.user_db.get_all_handles(ctx.guild.id)
+                    if li is not None:
+                        for h in li: all_handles.append(h)
+                elif handle[0]=='+':
+                    handles.remove(handle)
+                    li = cf_common.user_db.get_list(ctx.guild.id, handle[1:])
+                    if li is not None:
+                        li  = json.loads(li)
+                        for h in li: all_handles.append(h)
+            all_handles += await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True)
+            all_handles = set(all_handles)
             contest = cf_common.cache2.contest_cache.get_contest(contest_id)
             ranklist = None
             try:
@@ -356,7 +377,7 @@ class Contests(commands.Cog):
                                                                                 fetch_changes=True)
             await wait_msg.delete()
             await ctx.channel.send(embed=self._make_contest_embed_for_ranklist(ranklist))
-            await self._show_ranklist(channel=ctx.channel, contest_id=contest_id, handles=handles, ranklist=ranklist)
+            await self._show_ranklist(channel=ctx.channel, contest_id=contest_id, handles=all_handles, ranklist=ranklist)
 
     async def _show_ranklist(self, channel, contest_id: int, handles: List[str], ranklist, vc: bool = False, delete_after: float = None):
         contest = cf_common.cache2.contest_cache.get_contest(contest_id)

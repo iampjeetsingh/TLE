@@ -27,7 +27,7 @@ class CacheControl(commands.Cog):
         self.bot = bot
 
     @commands.group(brief='Commands to force reload of cache',
-                    invoke_without_command=True)
+                    invoke_without_command=True, hidden=True)
     @commands.check_any(commands.has_role('Admin'), commands.is_owner())
     async def cache(self, ctx):
         await ctx.send_help('cache')

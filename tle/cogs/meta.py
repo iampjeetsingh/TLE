@@ -49,13 +49,13 @@ class Meta(commands.Cog):
         self.bot = bot
         self.start_time = time.time()
 
-    @commands.group(brief='Bot control', invoke_without_command=True)
+    @commands.group(brief='Bot control', invoke_without_command=True, hidden=True)
     async def meta(self, ctx):
         """Command the bot or get information about the bot."""
         await ctx.send_help(ctx.command)
 
     @meta.command(brief='Restarts TLE')
-    @commands.check_any(commands.has_role('Admin'), commands.is_owner())
+    @commands.is_owner()
     async def restart(self, ctx):
         """Restarts the bot."""
         # Really, we just exit with a special code
@@ -64,7 +64,7 @@ class Meta(commands.Cog):
         os._exit(RESTART)
 
     @meta.command(brief='Kill TLE')
-    @commands.check_any(commands.has_role('Admin'), commands.is_owner())
+    @commands.is_owner()
     async def kill(self, ctx):
         """Restarts the bot."""
         await ctx.send('Dying...')
@@ -92,7 +92,7 @@ class Meta(commands.Cog):
                        pretty_time_format(time.time() - self.start_time))
 
     @meta.command(brief='Print bot guilds')
-    @commands.check_any(commands.has_role('Admin'), commands.is_owner())
+    @commands.is_owner()
     async def guilds(self, ctx):
         "Replies with info on the bot's guilds"
         msg = [f'Guild ID: {guild.id} | Name: {guild.name} | Owner: {guild.owner.id} | Icon: {guild.icon_url}'
@@ -100,7 +100,7 @@ class Meta(commands.Cog):
         await ctx.send('```' + '\n'.join(msg) + '```')
     
     @meta.command(brief='Forcefully reset contests')
-    @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
+    @commands.is_owner()
     async def resetcache(self, ctx):
         "Resets contest cache."
         try:
