@@ -272,7 +272,8 @@ class Codeforces(commands.Cog):
         paginator.paginate(self.bot, ctx.channel, pages, wait_time=5 * 60, set_pagenum_footers=True)
     
 
-    @commands.command(brief='See weekly leaderboard',usage='')
+    @commands.command(brief='See weekly leaderboard',usage='', hidden=True)
+    @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
     async def leaderboard(self, ctx, *args):
         handles = {handle for discord_id, handle
                             in cf_common.user_db.get_handles_for_guild(ctx.guild.id)}
