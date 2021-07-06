@@ -188,6 +188,13 @@ class UserDbConn:
             )
         ''')
         self.conn.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS bans (
+                user_id TEXT PRIMARY KEY
+            )
+            '''
+        )
+        self.conn.execute(
             'CREATE TABLE IF NOT EXISTS starboard ('
             'guild_id     TEXT PRIMARY KEY,'
             'channel_id   TEXT'
@@ -1075,6 +1082,35 @@ class UserDbConn:
         with self.conn:
             res = self.conn.execute(query, (guild_id,list_name,)).rowcount
         self.update()
+        return res
+    
+    def ban_user(self, user_id):
+        query = ('INSERT OR REPLACE INTO bans '
+                 '(user_id) '
+                 'VALUES (?)')
+        res = None
+        with self.conn:
+            res = self.conn.execute(query, (user_id,)).rowcount
+        self.update()
+        return res
+
+    def unban_user(self, user_id):
+        query = ('DELETE FROM bans '
+                 'WHERE user_id = ?')
+        res = None
+        with self.conn:
+            res = self.conn.execute(query, (user_id,)).rowcount
+        self.update()
+        return res
+
+    def get_banned_user(self, user_id):
+        query = '''
+            SELECT user_id FROM bans
+            WHERE user_id = ?
+        '''
+        res = self.conn.execute(query, (user_id,)).fetchone()
+        if res is None:
+            return res
         return res
 
     def close(self):

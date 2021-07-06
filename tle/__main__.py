@@ -92,9 +92,16 @@ def main():
         if ctx.guild is None:
             raise commands.NoPrivateMessage('Private messages not permitted.')
         return True
+    
+    def ban_check(ctx):
+        banned = cf_common.user_db.get_banned_user(ctx.author.id)
+        if banned is None:
+            return True
+        return False
 
     # Restrict bot usage to inside guild channels only.
     bot.add_check(no_dm_check)
+    bot.add_check(ban_check)
 
     # cf_common.initialize needs to run first, so it must be set as the bot's
     # on_ready event handler rather than an on_ready listener.

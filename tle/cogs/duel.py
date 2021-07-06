@@ -376,6 +376,8 @@ class Dueling(commands.Cog):
             loser_id = challenger if member.id != challenger else challengee
             loser = get_cf_user(loser_id, ctx.guild.id)
             problem = cf_common.cache2.problem_cache.problem_by_name[problem_name]
+            if loser is None:
+                return f'**[{problem.name}]({problem.url})** [{problem.rating}] versus unknown {when} in {duel_time}'
             return f'**[{problem.name}]({problem.url})** [{problem.rating}] versus [{loser.handle}]({loser.url}) {when} in {duel_time}'
 
         if wins:

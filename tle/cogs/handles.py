@@ -259,7 +259,7 @@ def _make_pages(users, title, resource='codeforces.com'):
         t += table.Header('#', 'Name', 'Handle', 'Contests' if no_rating else 'Rating')
         t += table.Line()
         for i, (member, handle, rating, n_contests) in enumerate(chunk):
-            name = member.display_name
+            name = member.display_name if member else "unknown"
             if len(name) > _NAME_MAX_LEN:
                 name = name[:_NAME_MAX_LEN - 1] + '…'
             rank = cf.rating2rank(rating)
