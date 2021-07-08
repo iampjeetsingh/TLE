@@ -28,6 +28,7 @@ from tle.util import paginator
 from tle.util import table
 from tle.util import tasks
 from tle.util import db
+from tle.util.codeforces_api import Rank
 from tle import constants
 
 from discord.ext import commands
@@ -54,6 +55,15 @@ _CLIST_RESOURCE_SHORT_FORMS = {'cc':'codechef.com', 'cf':'codeforces.com',
  'ac':'atcoder.jp', 'lc':'leetcode.com', 'google':'codingcompetitions.withgoogle.com',
  'fb':'facebook.com/hackercup', 'cd':'codedrills.io'}
 
+CODECHEF_RATED_RANKS = (
+    Rank(-10 ** 9, 1400, '1 Star', '1★', '#DADADA', 0x666666),
+    Rank(1400, 1600, '2 Star', '2★', '#C9E0CA', 0x1e7d22),
+    Rank(1600, 1800, '3 Star', '3★', '#CEDAF3', 0x3366cc),
+    Rank(1800, 2000, '4 Star', '4★', '#DBD2DE', 0x684273),
+    Rank(2000, 2200, '5 Star', '5★', '#FFF0C2', 0xffbf00),
+    Rank(2200, 2500, '6 Star', '6★', '#FFE3C8', 0xff7f00),
+    Rank(2500, 10**9, '7 Star', '7★', '#F1C1C8', 0xd0011b)
+)
 
 class HandleCogError(commands.CommandError):
     pass
@@ -357,6 +367,21 @@ class Handles(commands.Cog):
     async def handle(self, ctx):
         """Change or collect information about specific handles on Codeforces"""
         await ctx.send_help(ctx.command)
+
+    @staticmethod
+    async def update_member_star_role(member, role_to_assign, *, reason):
+        """Sets the `member` to only have the rank role of `role_to_assign`. All other rank roles
+        on the member, if any, will be removed. If `role_to_assign` is None all existing rank roles
+        on the member will be removed.
+        """
+        role_names_to_remove = {rank.title for rank in CODECHEF_RATED_RANKS}
+        if role_to_assign is not None:
+            role_names_to_remove.discard(role_to_assign.name)
+        to_remove = [role for role in member.roles if role.name in role_names_to_remove]
+        if to_remove:
+            await member.remove_roles(*to_remove, reason=reason)
+        if role_to_assign is not None and role_to_assign not in member.roles:
+            await member.add_roles(role_to_assign, reason=reason)
 
     @staticmethod
     async def update_member_rank_role(member, role_to_assign, *, reason):
@@ -800,6 +825,34 @@ class Handles(commands.Cog):
         """
         res = cf_common.user_db.get_handles_for_guild(guild.id)
         await self._update_ranks(guild, res)
+    
+    async def _update_stars_all(self, guild):
+        res = cf_common.user_db.get_account_ids_for_resource(guild.id, "codechef.com")
+        await self._update_stars(guild, res)
+
+    def rating2star(self, rating):
+        for rank in CODECHEF_RATED_RANKS:
+            if rank.low <= rating < rank.high:
+                return rank
+
+    async def _update_stars(self, guild, res):
+        if not res:
+            raise HandleCogError('Handles not set for any user')
+        id_to_member = {account_id: guild.get_member(user_id) for user_id, account_id, handle in res}
+        handles = [handle for user_id, account_id, handle in res]
+        clist_users = await clist.fetch_user_info("codechef.com", handles)
+        required_roles = {self.rating2star(user['rating']).title for user in clist_users if user['rating']!=None}
+        star2role = {role.name: role for role in guild.roles if role.name in required_roles}
+        missing_roles = required_roles - star2role.keys()
+        if missing_roles:
+            roles_str = ', '.join(f'`{role}`' for role in missing_roles)
+            plural = 's' if len(missing_roles) > 1 else ''
+            raise HandleCogError(f'Role{plural} for rank{plural} {roles_str} not present in the server')
+        for user in clist_users:
+            print(user)
+            member = id_to_member[user['id']]
+            role_to_assign = None if user['rating'] is None else star2role[self.rating2star(user['rating']).title]
+            await self.update_member_star_role(member, role_to_assign, reason='CodeChef star updates')
 
     async def _update_ranks(self, guild, res):
         member_handles = [(guild.get_member(user_id), handle) for user_id, handle in res]
@@ -901,10 +954,16 @@ class Handles(commands.Cog):
         return embeds
 
     @commands.group(brief='Commands for role updates',
-                    invoke_without_command=True)
+                    invoke_without_command=True, hidden=True)
     async def roleupdate(self, ctx):
         """Group for commands involving role updates."""
         await ctx.send_help(ctx.command)
+    
+    @roleupdate.command(brief='Update CodeChef star roles')
+    @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
+    async def codechef(self, ctx):
+        await self._update_stars_all(ctx.guild)
+        await ctx.send(embed=discord_common.embed_success('Roles updated successfully.'))
 
     @roleupdate.command(brief='Update Codeforces rank roles')
     @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
