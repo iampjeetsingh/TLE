@@ -849,7 +849,7 @@ class Handles(commands.Cog):
             plural = 's' if len(missing_roles) > 1 else ''
             raise HandleCogError(f'Role{plural} for rank{plural} {roles_str} not present in the server')
         for user in clist_users:
-            if user['id'] in member:
+            if user['id'] in id_to_member:
                 member = id_to_member[user['id']]
                 role_to_assign = None if user['rating'] is None else star2role[self.rating2star(user['rating']).title]
                 await self.update_member_star_role(member, role_to_assign, reason='CodeChef star updates')
