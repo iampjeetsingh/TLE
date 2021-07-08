@@ -623,7 +623,7 @@ class UserDbConn:
         self.update()
 
     def check_exists_starboard_message(self, original_msg_id):
-        query = ('SELECT 1 '
+        query = ('SELECT 1 as Result '
                  'FROM starboard_message '
                  'WHERE original_msg_id = ?')
         res = self.conn.execute(query, (original_msg_id,)).fetchone()
@@ -915,10 +915,10 @@ class UserDbConn:
         return res
 
     def has_auto_role_update_enabled(self, guild_id):
-        query = ('SELECT 1 '
-                 'FROM auto_role_update '
-                 'WHERE guild_id = ?')
-        return self.conn.execute(query, (guild_id,)).fetchone() is not None
+            query = ('SELECT 1 as Result '
+                    'FROM auto_role_update '
+                    'WHERE guild_id = ?')
+            return self.conn.execute(query, (guild_id,)).fetchone() is not None
 
     def reset_status(self, id):
         inactive_query = '''
