@@ -374,6 +374,7 @@ class Handles(commands.Cog):
         on the member, if any, will be removed. If `role_to_assign` is None all existing rank roles
         on the member will be removed.
         """
+        if member is None: return
         role_names_to_remove = {rank.title for rank in CODECHEF_RATED_RANKS}
         if role_to_assign is not None:
             role_names_to_remove.discard(role_to_assign.name)
