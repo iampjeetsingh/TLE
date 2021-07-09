@@ -28,7 +28,7 @@ from tle.util import paginator
 from tle.util import table
 from tle.util import tasks
 from tle.util import db
-from tle.util.codeforces_api import Rank
+from tle.util.codeforces_api import Rank, rating2rank
 from tle import constants
 
 from discord.ext import commands
@@ -68,33 +68,24 @@ CODECHEF_RATED_RANKS = (
 class HandleCogError(commands.CommandError):
     pass
 
+def cc_rating_to_color(rating):
+    h = discord_color_to_hex(rating2star(rating).color_embed)
+    return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+def discord_color_to_hex(color):
+    h = str(hex(color))
+    h = h[2:]
+    return ('0'*(6-len(h)))+h
 
 def rating_to_color(rating):
     """returns (r, g, b) pixels values corresponding to rating"""
-    # TODO: Integrate these colors with the ranks in codeforces_api.py
-    BLACK = (10, 10, 10)
-    RED = (255, 20, 20)
-    BLUE = (0, 0, 200)
-    GREEN = (0, 140, 0)
-    ORANGE = (250, 140, 30)
-    PURPLE = (160, 0, 120)
-    CYAN = (0, 165, 170)
-    GREY = (70, 70, 70)
-    if rating is None or rating=='N/A':
-        return BLACK
-    if rating < 1200:
-        return GREY
-    if rating < 1400:
-        return GREEN
-    if rating < 1600:
-        return CYAN
-    if rating < 1900:
-        return BLUE
-    if rating < 2100:
-        return PURPLE
-    if rating < 2400:
-        return ORANGE
-    return RED
+    h = discord_color_to_hex(rating2rank(rating).color_embed)
+    return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+def rating2star(rating):
+    for rank in CODECHEF_RATED_RANKS:
+        if rank.low <= rating < rank.high:
+            return rank
 
 FONTS = [
     'Noto Sans',
@@ -186,7 +177,7 @@ def get_gudgitters_image(rankings):
     discord_file = discord.File(image_data, filename='gudgitters.png')
     return discord_file
 
-def get_prettyhandles_image(rows, font):
+def get_prettyhandles_image(rows, font, color_converter=rating_to_color):
     """return PIL image for rankings"""
     SMOKE_WHITE = (250, 250, 250)
     BLACK = (0, 0, 0)
@@ -223,7 +214,7 @@ def get_prettyhandles_image(rows, font):
     for pos, name, handle, rating in rows:
         name = _trim(name)
         handle = _trim(handle)
-        color = rating_to_color(rating)
+        color = color_converter(rating)
         draw_row(str(pos), name, handle, str(rating) if rating else 'N/A', color, y)
         if rating and rating >= 3000:  # nutella
             nutella_x = START_X + WIDTH_RANK
@@ -774,23 +765,55 @@ class Handles(commands.Cog):
                            set_pagenum_footers=True)
 
     @handle.command(brief="Show handles, but prettier")
-    async def pretty(self, ctx, page_no: int = None):
+    async def pretty(self, ctx, arg1:str = None, arg2:str=None):
         """Show members of the server who have registered their handles and their Codeforces
         ratings, in color.
         """
-        user_id_cf_user_pairs = cf_common.user_db.get_cf_users_for_guild(ctx.guild.id)
-        user_id_cf_user_pairs.sort(key=lambda p: p[1].rating if p[1].rating is not None else -1,
-                                   reverse=True)
+        page_no = None
+        resource = None
+        if arg1!=None and arg2!=None:
+            resource = arg1
+            try:
+                page_no = int(arg2)
+            except:
+                page_no = -1  
+        elif arg1!=None:
+            if arg1 in ['codechef.com', 'cc', 'codechef']:
+                resource = arg1
+            else:
+                try:
+                    page_no = int(arg1)
+                except:
+                    page_no = -1    
+        wait_msg = await ctx.channel.send("Getting handle list...")
         rows = []
         author_idx = None
-        for user_id, cf_user in user_id_cf_user_pairs:
-            member = ctx.guild.get_member(user_id)
-            if member is None:
-                continue
-            idx = len(rows)
-            if member == ctx.author:
-                author_idx = idx
-            rows.append((idx, member.display_name, cf_user.handle, cf_user.rating))
+        if resource is not None and resource in ['codechef.com', 'cc', 'codechef'] :
+            res = cf_common.user_db.get_account_ids_for_resource(ctx.guild.id, "codechef.com")
+            handles = [handle for user_id, account_id, handle in res]
+            id_to_member = {account_id: ctx.guild.get_member(user_id) for user_id, account_id, handle in res}
+            clist_users = await clist.fetch_user_info("codechef.com", handles)
+            clist_users.sort(key=lambda user: int(user['rating']) if user['rating'] is not None else -1, reverse=True)
+            for user in clist_users:
+                if user['id'] not in id_to_member: continue
+                member = id_to_member[user['id']]
+                if member is None: continue
+                idx = len(rows)
+                if member==ctx.author:
+                    author_idx = idx
+                rows.append((idx, member.display_name, user['handle'], user['rating']))
+        else:
+            user_id_cf_user_pairs = cf_common.user_db.get_cf_users_for_guild(ctx.guild.id)
+            user_id_cf_user_pairs.sort(key=lambda p: p[1].rating if p[1].rating is not None else -1,
+                                    reverse=True)
+            for user_id, cf_user in user_id_cf_user_pairs:
+                member = ctx.guild.get_member(user_id)
+                if member is None:
+                    continue
+                idx = len(rows)
+                if member == ctx.author:
+                    author_idx = idx
+                rows.append((idx, member.display_name, cf_user.handle, cf_user.rating))
 
         if not rows:
             raise HandleCogError('No members with registered handles.')
@@ -814,10 +837,15 @@ class Handles(commands.Cog):
             num_before = (_PRETTY_HANDLES_PER_PAGE - 1) // 2
             start_idx = max(0, author_idx - num_before)
         rows_to_display = rows[start_idx : start_idx + _PRETTY_HANDLES_PER_PAGE]
-        img = get_prettyhandles_image(rows_to_display, self.font)
+        img = None
+        if resource in ['codechef.com', 'cc', 'codechef'] :
+            img = get_prettyhandles_image(rows_to_display, self.font, color_converter=cc_rating_to_color)
+        else:
+            img = get_prettyhandles_image(rows_to_display, self.font)
         buffer = io.BytesIO()
         img.save(buffer, 'png')
         buffer.seek(0)
+        await wait_msg.delete()
         await ctx.send(msg, file=discord.File(buffer, 'handles.png'))
 
     async def _update_ranks_all(self, guild):
@@ -829,12 +857,7 @@ class Handles(commands.Cog):
     
     async def _update_stars_all(self, guild):
         res = cf_common.user_db.get_account_ids_for_resource(guild.id, "codechef.com")
-        await self._update_stars(guild, res)
-
-    def rating2star(self, rating):
-        for rank in CODECHEF_RATED_RANKS:
-            if rank.low <= rating < rank.high:
-                return rank
+        await self._update_stars(guild, res)    
 
     async def _update_stars(self, guild, res):
         if not res:
@@ -842,7 +865,7 @@ class Handles(commands.Cog):
         id_to_member = {account_id: guild.get_member(user_id) for user_id, account_id, handle in res}
         handles = [handle for user_id, account_id, handle in res]
         clist_users = await clist.fetch_user_info("codechef.com", handles)
-        required_roles = {self.rating2star(user['rating']).title for user in clist_users if user['rating']!=None}
+        required_roles = {rating2star(user['rating']).title for user in clist_users if user['rating']!=None}
         star2role = {role.name: role for role in guild.roles if role.name in required_roles}
         missing_roles = required_roles - star2role.keys()
         if missing_roles:
@@ -852,7 +875,7 @@ class Handles(commands.Cog):
         for user in clist_users:
             if user['id'] in id_to_member:
                 member = id_to_member[user['id']]
-                role_to_assign = None if user['rating'] is None else star2role[self.rating2star(user['rating']).title]
+                role_to_assign = None if user['rating'] is None else star2role[rating2star(user['rating']).title]
                 await self.update_member_star_role(member, role_to_assign, reason='CodeChef star updates')
 
     async def _update_ranks(self, guild, res):
