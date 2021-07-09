@@ -443,8 +443,11 @@ class Handles(commands.Cog):
             guild_id = guild.id
             cf_common.user_db.set_account_id(member_id, guild_id, user['id'], user['resource'], user['handle'])
             if user['resource']=='codechef.com':
-                role = rating2star(user['rating']).title
-                await self.update_member_star_role(guild.get_member(member_id),role ,reason='CodeChef Account Set')
+                roletitle = rating2star(user['rating']).title
+                roles = [role for role in guild.roles if role.name == roletitle]
+                if not roles:
+                    raise HandleCogError(f'Handle Linked, but failed to assign role for `{roletitle}` as the required role is not present in the server')
+                await self.update_member_star_role(guild.get_member(member_id),roles[0] ,reason='CodeChef Account Set')
         except db.UniqueConstraintFailed:
             raise HandleCogError(f'The handle `{user["handle"]}` is already associated with another user.')
 
