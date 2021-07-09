@@ -14,7 +14,7 @@ gi.require_version('PangoCairo', '1.0')
 from gi.repository import Pango, PangoCairo
 
 import discord
-import random
+import random, string
 from discord.ext import commands
 
 from tle import constants
@@ -28,6 +28,7 @@ from tle.util import paginator
 from tle.util import table
 from tle.util import tasks
 from tle.util import db
+from tle.util import scaper
 from tle.util.codeforces_api import Rank, rating2rank
 from tle import constants
 
@@ -50,10 +51,10 @@ _GITGUD_MAX_POS_DELTA_VALUE = 500
 _DIVISION_RATING_LOW  = (2100, 1600, -1000)
 _DIVISION_RATING_HIGH = (9999, 2099,  1599)
 _SUPPORTED_CLIST_RESOURCES = ('codechef.com', 'atcoder.jp',
- 'leetcode.com','codingcompetitions.withgoogle.com', 'facebook.com/hackercup', 'codedrills.io')
+ 'leetcode.com','codingcompetitions.withgoogle.com', 'facebook.com/hackercup')
 _CLIST_RESOURCE_SHORT_FORMS = {'cc':'codechef.com', 'cf':'codeforces.com',
  'ac':'atcoder.jp', 'lc':'leetcode.com', 'google':'codingcompetitions.withgoogle.com',
- 'fb':'facebook.com/hackercup', 'cd':'codedrills.io'}
+ 'fb':'facebook.com/hackercup'}
 
 CODECHEF_RATED_RANKS = (
     Rank(-10 ** 9, 1400, '1 Star', '1★', '#DADADA', 0x666666),
@@ -86,6 +87,10 @@ def rating2star(rating):
     for rank in CODECHEF_RATED_RANKS:
         if rank.low <= rating < rank.high:
             return rank
+
+def randomword(length):
+   letters = string.ascii_lowercase
+   return ''.join(random.choice(letters) for i in range(length))
 
 FONTS = [
     'Noto Sans',
@@ -228,23 +233,27 @@ def get_prettyhandles_image(rows, font, color_converter=rating_to_color):
 
 def _make_profile_embed(member, user, handles={}, *, mode):
     assert mode in ('set', 'get')
-    if mode == 'set':
-        desc = f'Handle for {member.mention} successfully set to **[{user.handle}]({user.url})**'
+    if user:
+        if mode == 'set':
+            desc = f'Handle for {member.mention} successfully set to **[{user.handle}]({user.url})**'
+        else:
+            desc = f'Handle for {member.mention} is currently set to **[{user.handle}]({user.url})**'
+        if user.rating is None:
+            embed = discord.Embed(description=desc)
+            embed.add_field(name='Rating', value='Unrated', inline=True)
+        else:
+            embed = discord.Embed(description=desc, color=user.rank.color_embed)
+            embed.add_field(name='Rating', value=user.rating, inline=True)
+            embed.add_field(name='Rank', value=user.rank.title, inline=True)
     else:
-        desc = f'Handle for {member.mention} is currently set to **[{user.handle}]({user.url})**'
-    if user.rating is None:
-        embed = discord.Embed(description=desc)
-        embed.add_field(name='Rating', value='Unrated', inline=True)
-    else:
-        embed = discord.Embed(description=desc, color=user.rank.color_embed)
-        embed.add_field(name='Rating', value=user.rating, inline=True)
-        embed.add_field(name='Rank', value=user.rank.title, inline=True)
+        embed = discord.Embed(description="CodeForces handle is not set for this user")
     for key in handles:
         if key=='codeforces.com': continue
         title = key
         if key=="codingcompetitions.withgoogle.com": title = "google"
         embed.add_field(name=title, value=handles[key], inline=True)
-    embed.set_thumbnail(url=f'{user.titlePhoto}')
+    if user:
+        embed.set_thumbnail(url=f'{user.titlePhoto}')
     return embed
 
 
@@ -410,7 +419,7 @@ class Handles(commands.Cog):
             for user in users:
                 if user['resource'] not in _SUPPORTED_CLIST_RESOURCES:
                     continue
-                await self._set_account_id(member.id, ctx.guild.id, user)
+                await self._set_account_id(member.id, ctx.guild, user)
         else:
             # CF API returns correct handle ignoring case, update to it
             user, = await cf.user.info(handles=[handle])
@@ -429,9 +438,13 @@ class Handles(commands.Cog):
                     except clist.HandleNotFoundError:
                         pass            
 
-    async def _set_account_id(self, member_id, guild_id, user):
+    async def _set_account_id(self, member_id, guild, user):
         try:
+            guild_id = guild.id
             cf_common.user_db.set_account_id(member_id, guild_id, user['id'], user['resource'], user['handle'])
+            if user['resource']=='codechef.com':
+                role = rating2star(user['rating']).title
+                await self.update_member_star_role(guild.get_member(member_id),role ,reason='CodeChef Account Set')
         except db.UniqueConstraintFailed:
             raise HandleCogError(f'The handle `{user["handle"]}` is already associated with another user.')
 
@@ -458,42 +471,94 @@ class Handles(commands.Cog):
     @cf_common.user_guard(group='handle',
                           get_exception=lambda: HandleCogError('Identification is already running for you'))
     async def identify(self, ctx, handle: str):
-        """Link a codeforces account to discord account by submitting a compile error to a random problem"""
-        if cf_common.user_db.get_handle(ctx.author.id, ctx.guild.id):
-            raise HandleCogError(f'{ctx.author.mention}, you cannot identify when your handle is '
-                                 'already set. Ask an Admin or Moderator if you wish to change it')
+        """Link a codeforces/codechef/atcoder/leetcode account to discord account
+        
+        For linking codeforces
+        ;handle identify <your handle>
 
-        if cf_common.user_db.get_user_id(handle, ctx.guild.id):
-            raise HandleCogError(f'The handle `{handle}` is already associated with another user. Ask an Admin or Moderator in case of an inconsistency.')
+        Now, You can also link the following websites to TLE
+        codechef.com (cc)
+        atcoder.jp (ac)
+        codingcompetitions.withgoogle.com (google)
+        leetcode.com (lc) 
 
-        if handle in cf_common.HandleIsVjudgeError.HANDLES:
-            raise cf_common.HandleIsVjudgeError(handle)
+        To link codechef and atcoder you can use the notation below 
+        ;handle identify <website>:<your handle>
+        
+        For eg:- ;handle identify codechef.com:thesupremeone
 
-        users = await cf.user.info(handles=[handle])
+        You can also use shortform instead of full website name
+        ;handle identify ac:thesupremeone
+
+        For linking google and leetcode, please contact a moderator  
+        """
         invoker = str(ctx.author)
-        handle = users[0].handle
-        problems = [prob for prob in cf_common.cache2.problem_cache.problems
-                    if prob.rating <= 1200]
-        problem = random.choice(problems)
-        await ctx.send(f'`{invoker}`, submit a compile error to <{problem.url}> within 60 seconds')
-        await asyncio.sleep(60)
-
-        subs = await cf.user.status(handle=handle, count=5)
-        if any(sub.problem.name == problem.name and sub.verdict == 'COMPILATION_ERROR' for sub in subs):
-            user, = await cf.user.info(handles=[handle])
-            await self._set(ctx, ctx.author, user)
-            embed = _make_profile_embed(ctx.author, user, mode='set')
-            await ctx.send(embed=embed)
+        if ':' in handle:
+            resource = handle[0: handle.index(':')]
+            handle = handle[handle.index(':')+1:]
+            if resource=='all':
+                return await ctx.send(f'Sorry `{invoker}`, all keyword can only be used with set command')
+            if resource in _CLIST_RESOURCE_SHORT_FORMS:
+                resource = _CLIST_RESOURCE_SHORT_FORMS[resource]
+            if resource not in ['codechef.com','atcoder.jp']:
+                raise HandleCogError(f'{ctx.author.mention}, you cannot identify handles of {resource} as of now ')
+            wait_msg = await ctx.channel.send('Fetching account details, please wait...')
+            users = await clist.account(handle, resource)
+            if users is None or len(users)<0:
+                raise HandleCogError(f'{ctx.author.mention}, I couldn\'t find your handle, don\'t tell me you haven\'t given any contest ')
+            user = users[0]
+            token = randomword(8)
+            await wait_msg.delete()
+            field = "name" 
+            if resource=='atcoder.jp': field = 'affiliation'
+            wait_msg = await ctx.send(f'`{invoker}`, change your {field} to `{token}` on {resource} within 60 seconds')
+            await asyncio.sleep(60)
+            await wait_msg.delete()
+            wait_msg = await ctx.channel.send(f'Verifying {field} change...')
+            if scaper.assert_display_name(handle, token, resource, ctx.author.mention):
+                member = ctx.author
+                await self._set_account_id(member.id, ctx.guild, user)
+                await wait_msg.delete()
+                await self.get(ctx, member, settingHandle=True)
+            else:
+                await wait_msg.delete()
+                await ctx.send(f'Sorry `{invoker}`, can you try again?')
         else:
-            await ctx.send(f'Sorry `{invoker}`, can you try again?')
+            if cf_common.user_db.get_handle(ctx.author.id, ctx.guild.id):
+                raise HandleCogError(f'{ctx.author.mention}, you cannot identify when your handle is '
+                                    'already set. Ask an Admin or Moderator if you wish to change it')
+
+            if cf_common.user_db.get_user_id(handle, ctx.guild.id):
+                raise HandleCogError(f'The handle `{handle}` is already associated with another user. Ask an Admin or Moderator in case of an inconsistency.')
+
+            if handle in cf_common.HandleIsVjudgeError.HANDLES:
+                raise cf_common.HandleIsVjudgeError(handle)
+
+            users = await cf.user.info(handles=[handle])
+            handle = users[0].handle
+            problems = [prob for prob in cf_common.cache2.problem_cache.problems
+                        if prob.rating <= 1200]
+            problem = random.choice(problems)
+            await ctx.send(f'`{invoker}`, submit a compile error to <{problem.url}> within 60 seconds')
+            await asyncio.sleep(60)
+
+            subs = await cf.user.status(handle=handle, count=5)
+            if any(sub.problem.name == problem.name and sub.verdict == 'COMPILATION_ERROR' for sub in subs):
+                user, = await cf.user.info(handles=[handle])
+                await self._set(ctx, ctx.author, user)
+                embed = _make_profile_embed(ctx.author, user, mode='set')
+                await ctx.send(embed=embed)
+            else:
+                await ctx.send(f'Sorry `{invoker}`, can you try again?')
 
     @handle.command(brief='Get handle by Discord username')
     async def get(self, ctx, member: discord.Member, settingHandle = False):
         """Show Codeforces handle of a user."""
         handle = cf_common.user_db.get_handle(member.id, ctx.guild.id)
-        if not handle:
+        handles = cf_common.user_db.get_account_id_by_user(member.id, ctx.guild.id)
+        if not handle and handles is None:
             raise HandleCogError(f'Handle for {member.mention} not found in database')
-        user = cf_common.user_db.fetch_cf_user(handle)
+        user = cf_common.user_db.fetch_cf_user(handle) if handle else None
         handles = cf_common.user_db.get_account_id_by_user(member.id, ctx.guild.id)
         embed = _make_profile_embed(member, user,handles=handles, mode='get' if not settingHandle else 'set')
         await ctx.send(embed=embed)
@@ -518,6 +583,7 @@ class Handles(commands.Cog):
             raise HandleCogError(f'Handle for {member.mention} not found in database')
         await self.update_member_rank_role(member, role_to_assign=None,
                                            reason='Handle removed for user')
+        await self.update_member_star_role(member, role_to_assign=None, reason='Handle removed for user')
         embed = discord_common.embed_success(f'Removed handle for {member.mention}')
         await ctx.send(embed=embed)
 
