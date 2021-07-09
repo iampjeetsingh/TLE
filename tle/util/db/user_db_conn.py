@@ -526,16 +526,16 @@ class UserDbConn:
     def remove_handle(self, user_id, guild_id):
         query = ('DELETE FROM user_handle '
                  'WHERE user_id = ? AND guild_id = ?')
-        res = None
+        res1 = None
         with self.conn:
-            res = self.conn.execute(query, (user_id, guild_id)).rowcount
+            res1 = self.conn.execute(query, (user_id, guild_id)).rowcount
         query = ('DELETE FROM clist_account_ids '
                  'WHERE user_id = ? AND guild_id = ?')
-        res = None
+        res2 = None
         with self.conn:
-            res = self.conn.execute(query, (user_id, guild_id)).rowcount
+            res2 = self.conn.execute(query, (user_id, guild_id)).rowcount
         self.update()
-        return res
+        return res1 or res2
 
     def get_handles_for_guild(self, guild_id):
         query = ('SELECT user_id, handle '

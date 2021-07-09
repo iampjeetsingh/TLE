@@ -587,6 +587,22 @@ class Handles(commands.Cog):
         embed = discord_common.embed_success(f'Removed handle for {member.mention}')
         await ctx.send(embed=embed)
 
+    @handle.command(brief='Remove handle for a user')
+    @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
+    async def removebyid(self, ctx, member_id:int):
+        """Remove Codeforces handle of a user."""
+        rc = cf_common.user_db.remove_handle(member_id, ctx.guild.id)
+        member = ctx.guild.get_member(member_id)
+        mention = 'unknown' if not member else member.mention
+        if not rc:
+            raise HandleCogError(f'Handle for {mention} not found in database')
+        if member:
+            await self.update_member_rank_role(member, role_to_assign=None,
+                                            reason='Handle removed for user')
+            await self.update_member_star_role(member, role_to_assign=None, reason='Handle removed for user')
+        embed = discord_common.embed_success(f'Removed handle for {mention}')
+        await ctx.send(embed=embed)
+
     @handle.command(brief='Resolve redirect of a user\'s handle')
     async def unmagic(self, ctx):
         """Updates handle of the calling user if they have changed handles
