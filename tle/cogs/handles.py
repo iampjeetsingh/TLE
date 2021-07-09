@@ -963,7 +963,9 @@ class Handles(commands.Cog):
     @roleupdate.command(brief='Update CodeChef star roles')
     @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
     async def codechef(self, ctx):
+        wait_msg = await ctx.channel.send("Updating codechef stars...")
         await self._update_stars_all(ctx.guild)
+        await wait_msg.delete()
         await ctx.send(embed=discord_common.embed_success('Roles updated successfully.'))
 
     @roleupdate.command(brief='Update Codeforces rank roles')
