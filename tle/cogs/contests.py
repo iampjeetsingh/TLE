@@ -314,10 +314,12 @@ class Contests(commands.Cog):
             contest = await clist.contest(contest_id)
             all_handles = []
             all_account_ids = []
+            standings_to_show = None
             if handles is None or len(handles)==0:
                 handle_list = cf_common.user_db.get_account_ids_for_resource(ctx.guild.id ,contest['resource'])
                 for user_id, account_id, handle in handle_list:
                     all_account_ids.append(account_id)
+                standings_to_show = await clist.statistics(contest_id=contest_id, account_ids=all_account_ids)
             else:
                 for handle in handles:
                     if handle=='+server':
@@ -335,13 +337,13 @@ class Contests(commands.Cog):
                             for h in li: all_handles.append(h)
                     else: 
                         all_handles.append(handle)
-            all_handles = set(all_handles)
-            standings = await clist.statistics(contest_id=contest_id)
-            standings_to_show = []
-            for standing in standings:
-                if (standing['handle'] in all_handles) or (standing['account_id'] in all_account_ids):
-                    if standing is not None and standing['place'] is not None:
-                        standings_to_show.append(standing)
+                all_handles = set(all_handles)
+                standings = await clist.statistics(contest_id=contest_id)
+                standings_to_show = []
+                for standing in standings:
+                    if (standing['handle'] in all_handles) or (standing['account_id'] in all_account_ids):
+                        if standing is not None and standing['place'] is not None:
+                            standings_to_show.append(standing)
             standings_to_show.sort(key=lambda standing: int(standing['place']))
             content = self._make_clist_standings_pages(standings_to_show)
             await wait_msg.delete()

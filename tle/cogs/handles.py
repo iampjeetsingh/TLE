@@ -822,13 +822,13 @@ class Handles(commands.Cog):
                     for user_id, cf_user in res if not countries or cf_user.country in countries]
             users = [(member, handle, rating, 0) for member, handle, rating in users if member is not None]
         else:
-            handles = []
             account_ids = cf_common.user_db.get_account_ids_for_resource(ctx.guild.id ,resource)
             members = {}
+            ids = []
             for user_id, account_id, handle in account_ids:
-                handles.append(handle)
+                ids.append(account_id)
                 members[handle] = ctx.guild.get_member(user_id)
-            clist_users = await clist.fetch_user_info(resource, handles)
+            clist_users = await clist.fetch_user_info(resource, ids)
             users = []
             for clist_user in clist_users:
                 if clist_user['handle'] not in members: continue

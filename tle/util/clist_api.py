@@ -146,11 +146,19 @@ async def account(handle, resource):
         raise HandleNotFoundError(handle=handle, resource=resource) 
     return resp
 
-async def statistics(account_id=None, contest_id=None, order_by=None):
+async def statistics(account_id=None, contest_id=None, order_by=None, account_ids=None, resource=None):
     params = {'limit':1000}
     if account_id!=None: params['account_id'] = account_id
     if contest_id!=None: params['contest_id'] = contest_id
     if order_by!=None: params['order_by'] = order_by
+    if account_ids!=None:
+        ids = ""
+        for i in range(len(account_ids)):
+            ids += str(account_ids[i])
+            if i!=(len(account_ids)-1):
+                ids += ','
+        params['account_id__in']=ids
+    if resource!=None: params['resource'] = resource
     results = []
     offset = 0
     while True:
@@ -173,9 +181,15 @@ async def contest(contest_id):
     resp = await _query_clist_api('contest/'+str(contest_id), None)
     return resp
 
-async def fetch_user_info(resource, handles):
-    regex = '|'.join(handles)
-    params = {'resource':resource, 'handle__regex':regex, 'limit':1000}
+async def fetch_user_info(resource, account_ids):
+    params = {'resource':resource, 'limit':1000}
+    if account_ids!=None:
+        ids = ""
+        for i in range(len(account_ids)):
+            ids += str(account_ids[i])
+            if i!=(len(account_ids)-1):
+                ids += ','
+        params['id__in']=ids
     resp = await _query_clist_api('account', params)
     if resp==None or 'objects' not in resp:
         raise ClientError
