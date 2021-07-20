@@ -81,6 +81,10 @@ ATCODER_RATED_RANKS = (
 class HandleCogError(commands.CommandError):
     pass
 
+def ac_rating_to_color(rating):
+    h = discord_color_to_hex(rating2acrank(rating).color_embed)
+    return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
 def cc_rating_to_color(rating):
     h = discord_color_to_hex(rating2star(rating).color_embed)
     return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
@@ -97,6 +101,11 @@ def rating_to_color(rating):
 
 def rating2star(rating):
     for rank in CODECHEF_RATED_RANKS:
+        if rank.low <= rating < rank.high:
+            return rank
+
+def rating2acrank(rating):
+    for rank in ATCODER_RATED_RANKS:
         if rank.low <= rating < rank.high:
             return rank
 
@@ -879,7 +888,9 @@ class Handles(commands.Cog):
             except:
                 page_no = -1  
         elif arg1!=None:
-            if arg1 in ['codechef.com', 'cc', 'codechef']:
+            if arg1 in _CLIST_RESOURCE_SHORT_FORMS:
+                resource = _CLIST_RESOURCE_SHORT_FORMS[arg1]
+            elif arg1 in _SUPPORTED_CLIST_RESOURCES:
                 resource = arg1
             else:
                 try:
@@ -889,11 +900,16 @@ class Handles(commands.Cog):
         wait_msg = await ctx.channel.send("Getting handle list...")
         rows = []
         author_idx = None
-        if resource is not None and resource in ['codechef.com', 'cc', 'codechef'] :
-            res = cf_common.user_db.get_account_ids_for_resource(ctx.guild.id, "codechef.com")
-            handles = [handle for user_id, account_id, handle in res]
-            id_to_member = {account_id: ctx.guild.get_member(user_id) for user_id, account_id, handle in res}
-            clist_users = await clist.fetch_user_info("codechef.com", handles)
+        if resource is not None and resource!='codeforces.com':
+            if resource not in ['codechef.com', 'atcoder.jp']:
+                raise HandleCogError(resource+' is not supported for handle pretty command.')
+            id_to_member = dict()
+            account_ids = cf_common.user_db.get_account_ids_for_resource(ctx.guild.id ,resource)
+            ids = []
+            for user_id, account_id, handle in account_ids:
+                ids.append(account_id)
+                id_to_member[account_id] = ctx.guild.get_member(user_id)
+            clist_users = await clist.fetch_user_info(resource, account_ids=ids)
             clist_users.sort(key=lambda user: int(user['rating']) if user['rating'] is not None else -1, reverse=True)
             for user in clist_users:
                 if user['id'] not in id_to_member: continue
@@ -939,8 +955,10 @@ class Handles(commands.Cog):
             start_idx = max(0, author_idx - num_before)
         rows_to_display = rows[start_idx : start_idx + _PRETTY_HANDLES_PER_PAGE]
         img = None
-        if resource in ['codechef.com', 'cc', 'codechef'] :
+        if resource=='codechef.com':
             img = get_prettyhandles_image(rows_to_display, self.font, color_converter=cc_rating_to_color)
+        elif resource=='atcoder.jp':
+            img = get_prettyhandles_image(rows_to_display, self.font, color_converter=ac_rating_to_color)
         else:
             img = get_prettyhandles_image(rows_to_display, self.font)
         buffer = io.BytesIO()

@@ -253,7 +253,6 @@ class Graphs(commands.Cog):
                 args.remove(key)
                 resource = key
         resp = None
-        handles = []
         if resource=='codeforces.com':
             handles = args or ('!' + str(ctx.author),)
             handles = await cf_common.resolve_handles(ctx, self.converter, handles)
@@ -268,12 +267,29 @@ class Graphs(commands.Cog):
         else:
             if resource not in ['codechef.com', 'atcoder.jp']:
                 raise GraphCogError('You cannot plot rating of '+resource+' as of now')
-            account_id = cf_common.user_db.get_account_id(ctx.author.id, ctx.guild.id, resource)
-            if account_id!=None:
-                resp = [await clist.fetch_rating_changes(account_id)]
-                handles.append(ctx.author.display_name)
+            if args:
+                handles = args
+                account_ids, handles = await cf_common.resolve_handles(ctx, self.converter, handles, resource=resource)
+                if len(handles)!=0:
+                    for user in await clist.fetch_user_info(resource=resource, handles=handles):
+                        account_ids.append(int(user['id']))
+                data = dict()
+                for change in await clist.fetch_rating_changes(account_ids):
+                    if change.handle in data:
+                        data[change.handle].append(change)
+                    else:
+                        data[change.handle] = [change,]
+                resp = []
+                for key in data:
+                    resp.append(data[key])
             else:
-                raise cf_common.HandleNotRegisteredError(ctx.author)
+                handles = []
+                account_id = cf_common.user_db.get_account_id(ctx.author.id, ctx.guild.id, resource)
+                if account_id!=None:
+                    resp = [await clist.fetch_rating_changes([account_id])]
+                    handles.append(ctx.author.display_name)
+                else:
+                    raise cf_common.HandleNotRegisteredError(ctx.author)
 
         resp = [filt.filter_rating_changes(rating_changes) for rating_changes in resp]
 
@@ -296,6 +312,8 @@ class Graphs(commands.Cog):
         plt.axes().set_prop_cycle(gc.rating_color_cycler)
         _plot_rating(resp, resource=resource)
         current_ratings = [rating_changes[-1].newRating if rating_changes else 'Unrated' for rating_changes in resp]
+        if resource!='codeforces.com':
+            handles = [rating_changes[-1].handle for rating_changes in resp]
         labels = [gc.StrWrap(f'{handle} ({rating})') for handle, rating in zip(handles, current_ratings)]
         plt.legend(labels, loc='upper left')
 
@@ -309,7 +327,7 @@ class Graphs(commands.Cog):
             plt.ylim(min_rating - 100, max_rating + 200)
 
         discord_file = gc.get_current_figure_as_file()
-        embed = discord_common.cf_color_embed(title='Rating graph on Codeforces')
+        embed = discord_common.cf_color_embed(title='Rating graph on '+resource)
         discord_common.attach_image(embed, discord_file)
         discord_common.set_author_footer(embed, ctx.author)
         await ctx.send(embed=embed, file=discord_file)
@@ -335,7 +353,6 @@ class Graphs(commands.Cog):
                 args.remove(key)
                 resource = key
         resp = None
-        handles = []
         if resource=='codeforces.com':
             handles = args or ('!' + str(ctx.author),)
             handles = await cf_common.resolve_handles(ctx, self.converter, handles)
@@ -350,14 +367,33 @@ class Graphs(commands.Cog):
         else:
             if resource not in ['codechef.com', 'atcoder.jp']:
                 raise GraphCogError('You cannot plot performance of '+resource+' as of now')
-            account_id = cf_common.user_db.get_account_id(ctx.author.id, ctx.guild.id, resource)
-            if account_id!=None:
-                resp = [await clist.fetch_rating_changes(account_id)]
-                handles.append(ctx.author.display_name)
+            if args:
+                handles = args
+                account_ids, handles = await cf_common.resolve_handles(ctx, self.converter, handles, resource=resource)
+                if len(handles)!=0:
+                    for user in await clist.fetch_user_info(resource=resource, handles=handles):
+                        account_ids.append(int(user['id']))
+                data = dict()
+                for change in await clist.fetch_rating_changes(account_ids):
+                    if change.handle in data:
+                        data[change.handle].append(change)
+                    else:
+                        data[change.handle] = [change,]
+                resp = []
+                for key in data:
+                    resp.append(data[key])
             else:
-                raise cf_common.HandleNotRegisteredError(ctx.author)
+                handles = []
+                account_id = cf_common.user_db.get_account_id(ctx.author.id, ctx.guild.id, resource)
+                if account_id!=None:
+                    resp = [await clist.fetch_rating_changes([account_id])]
+                    handles.append(ctx.author.display_name)
+                else:
+                    raise cf_common.HandleNotRegisteredError(ctx.author)
         # extract last rating before corrections
         current_ratings = [rating_changes[-1].newRating if rating_changes else 'Unrated' for rating_changes in resp]
+        if resource!='codeforces.com':
+            handles = [rating_changes[-1].handle for rating_changes in resp]
         resp = cf.user.correct_rating_changes(resp=resp, resource=resource)
         resp = [filt.filter_rating_changes(rating_changes) for rating_changes in resp]
         
@@ -385,7 +421,7 @@ class Graphs(commands.Cog):
             plt.ylim(min_rating - 100, max_rating + 200)
 
         discord_file = gc.get_current_figure_as_file()
-        embed = discord_common.cf_color_embed(title='Performance graph on Codeforces')
+        embed = discord_common.cf_color_embed(title='Performance graph on '+resource)
         discord_common.attach_image(embed, discord_file)
         discord_common.set_author_footer(embed, ctx.author)
         await ctx.send(embed=embed, file=discord_file)

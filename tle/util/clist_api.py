@@ -182,7 +182,7 @@ async def contest(contest_id):
     resp = await _query_clist_api('contest/'+str(contest_id), None)
     return resp
 
-async def fetch_user_info(resource, account_ids):
+async def fetch_user_info(resource, account_ids=None, handles=None):
     params = {'resource':resource, 'limit':1000}
     if account_ids!=None:
         ids = ""
@@ -191,6 +191,9 @@ async def fetch_user_info(resource, account_ids):
             if i!=(len(account_ids)-1):
                 ids += ','
         params['id__in']=ids
+    if handles!=None:
+        regex = '|'.join(handles)
+        params['handle__regex'] = regex
     resp = await _query_clist_api('account', params)
     if resp==None or 'objects' not in resp:
         raise ClientError
@@ -198,8 +201,8 @@ async def fetch_user_info(resource, account_ids):
         resp = resp['objects']
     return resp
 
-async def fetch_rating_changes(account_id):
-    resp = await statistics(account_id=account_id, order_by='date')
+async def fetch_rating_changes(account_ids=None):
+    resp = await statistics(account_ids=account_ids, order_by='date')
     result = []
     for changes in resp:
         time = dt.datetime.strptime(changes['date'],'%Y-%m-%dT%H:%M:%S')

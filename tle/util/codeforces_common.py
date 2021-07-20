@@ -159,8 +159,8 @@ class FindMemberFailedError(ResolveHandleError):
 
 
 class HandleNotRegisteredError(ResolveHandleError):
-    def __init__(self, member):
-        super().__init__(f'Codeforces handle for {member.mention} not found in database')
+    def __init__(self, member, resource='Codeforces'):
+        super().__init__(f'{resource} handle for {member.mention} not found in database')
 
 
 class HandleIsVjudgeError(ResolveHandleError):
@@ -213,17 +213,23 @@ def days_ago(t):
         return 'yesterday'
     return f'{math.floor(days)} days ago'
 
-async def resolve_handles(ctx, converter, handles, *, mincnt=1, maxcnt=5, default_to_all_server=False):
+async def resolve_handles(ctx, converter, handles, *, mincnt=1, maxcnt=5, default_to_all_server=False, resource='codeforces.com'):
     """Convert an iterable of strings to CF handles. A string beginning with ! indicates Discord username,
      otherwise it is a raw CF handle to be left unchanged."""
     handles = set(handles)
     if default_to_all_server and not handles:
         handles.add('+server')
+    account_ids = set()
     if '+server' in handles:
         handles.remove('+server')
-        guild_handles = {handle for discord_id, handle
-                            in user_db.get_handles_for_guild(ctx.guild.id)}
-        handles.update(guild_handles)
+        if resource=='codeforces.com':
+            guild_handles = {handle for discord_id, handle
+                                in user_db.get_handles_for_guild(ctx.guild.id)}
+            handles.update(guild_handles)
+        else:
+            guild_account_ids = {account_id for user_id, account_id, handle 
+            in user_db.get_account_ids_for_resource(ctx.guild.id, resource=resource)}
+            account_ids.update(guild_account_ids)
     if len(handles) < mincnt or (maxcnt and maxcnt < len(handles)):
         raise HandleCountOutOfBoundsError(mincnt, maxcnt)
     resolved_handles = []
@@ -235,13 +241,25 @@ async def resolve_handles(ctx, converter, handles, *, mincnt=1, maxcnt=5, defaul
                 member = await converter.convert(ctx, member_identifier)
             except commands.errors.CommandError:
                 raise FindMemberFailedError(member_identifier)
-            handle = user_db.get_handle(member.id, ctx.guild.id)
-            if handle is None:
-                raise HandleNotRegisteredError(member)
+            if resource=='codeforces.com':
+                handle = user_db.get_handle(member.id, ctx.guild.id)
+                if handle is None:
+                    raise HandleNotRegisteredError(member)
+                resolved_handles.append(handle)
+            else:
+                account_id = user_db.get_account_id(member.id, ctx.guild.id, resource=resource)
+                if account_id is None:
+                    raise HandleNotRegisteredError(member, resource=resource)
+                else:
+                    account_ids.add(account_id)
+        else:
+            resolved_handles.append(handle)
         if handle in HandleIsVjudgeError.HANDLES:
             raise HandleIsVjudgeError(handle)
-        resolved_handles.append(handle)
-    return resolved_handles
+    if resource=='codeforces.com':
+        return resolved_handles
+    else:
+        return (list(account_ids),resolved_handles)
 
 def members_to_handles(members: [discord.Member], guild_id):
     handles = []
