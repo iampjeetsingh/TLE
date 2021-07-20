@@ -192,8 +192,8 @@ async def fetch_user_info(resource, account_ids=None, handles=None):
                 ids += ','
         params['id__in']=ids
     if handles!=None:
-        regex = '|'.join(handles)
-        params['handle__regex'] = regex
+        regex = '$|^'.join(handles)
+        params['handle__regex'] = '^'+regex+'$'
     resp = await _query_clist_api('account', params)
     if resp==None or 'objects' not in resp:
         raise ClientError

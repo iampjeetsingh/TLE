@@ -172,10 +172,18 @@ class UserDbConn:
             CREATE TABLE IF NOT EXISTS lists(
                 guild_id TEXT,
                 name TEXT,
-                handles TEXT,
                 PRIMARY KEY(guild_id, name)
             )
         ''')
+        self.conn.execute(
+            'CREATE TABLE IF NOT EXISTS list_handles ('
+            'list    TEXT,'
+            'resource    TEXT,'
+            'account_id  INTEGER,'
+            'handle  TEXT,'
+            'PRIMARY KEY (list, resource, account_id)'
+            ')'
+        )
         self.conn.execute('''
             CREATE TABLE IF NOT EXISTS reminder (
                 guild_id TEXT PRIMARY KEY,
@@ -1055,25 +1063,64 @@ class UserDbConn:
         self.update()
         return res
 
-    def create_list(self, guild_id, list_name, handles):
+    def create_list(self, guild_id, list_name):
         query = ('INSERT OR REPLACE INTO lists '
-                 '(guild_id, name, handles) '
-                 'VALUES (?, ?, ?)')
+                 '(guild_id, name) '
+                 'VALUES (?, ?)')
         res = None
         with self.conn:
-            res = self.conn.execute(query, (guild_id, list_name, handles)).rowcount
+            res = self.conn.execute(query, (guild_id, list_name, )).rowcount
         self.update()
         return res
 
-    def get_list(self, guild_id, list_name):
+    def get_lists(self, guild_id):
         query1 = '''
-            SELECT guild_id, name, handles FROM lists
-            WHERE guild_id = ? AND name = ?
+            SELECT name FROM lists
+            WHERE guild_id = ?
         '''
-        res = self.conn.execute(query1, (guild_id,list_name,)).fetchone()
+        res = self.conn.execute(query1, (guild_id,)).fetchall()
         if res is None:
             return res
-        return res[2]
+        return [names for names, in res]
+    
+    def get_list_account_ids(self, list_name, resource):
+        query1 = '''
+            SELECT account_id FROM list_handles
+            WHERE list = ? AND resource = ? 
+        '''
+        res = self.conn.execute(query1, (list_name,resource)).fetchall()
+        if res is None:
+            return res
+        return [account_id for account_id, in res]
+    
+    def get_list_handles(self, list_name, resource):
+        query1 = '''
+            SELECT handle FROM list_handles
+            WHERE list = ? AND resource = ? 
+        '''
+        res = self.conn.execute(query1, (list_name,resource)).fetchall()
+        if res is None:
+            return res
+        return [handle for handle, in res]
+
+    def add_to_list(self, list_name, resource, account_id, handle):
+        query = ('INSERT OR REPLACE INTO list_handles '
+                 '(list, resource, account_id, handle) '
+                 'VALUES (?, ?, ?, ?)')
+        res = None
+        with self.conn:
+            res = self.conn.execute(query, (list_name, resource, account_id, handle,)).rowcount
+        self.update()
+        return res
+
+    def remove_from_list(self, list_name, resource, handle):
+        query = ('DELETE FROM list_handles '
+                 'WHERE list = ? AND resource = ? AND handle = ? ')
+        res = None
+        with self.conn:
+            res = self.conn.execute(query, (list_name, resource, handle,)).rowcount
+        self.update()
+        return res
 
     def delete_list(self, guild_id, list_name):
         query = ('DELETE FROM lists '
@@ -1081,6 +1128,11 @@ class UserDbConn:
         res = None
         with self.conn:
             res = self.conn.execute(query, (guild_id,list_name,)).rowcount
+        query = ('DELETE FROM list_handles '
+                 'WHERE list = ? ')
+        res = None
+        with self.conn:
+            res = self.conn.execute(query, (list_name,)).rowcount
         self.update()
         return res
     

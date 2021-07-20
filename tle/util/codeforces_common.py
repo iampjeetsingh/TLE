@@ -232,8 +232,16 @@ async def resolve_handles(ctx, converter, handles, *, mincnt=1, maxcnt=5, defaul
             account_ids.update(guild_account_ids)
     if len(handles) < mincnt or (maxcnt and maxcnt < len(handles)):
         raise HandleCountOutOfBoundsError(mincnt, maxcnt)
-    resolved_handles = []
+    resolved_handles = set()
     for handle in handles:
+        if handle.startswith('+'):
+            list_name = handle[1:]
+            if resource=='codeforces.com':
+                list_handles = set(user_db.get_list_handles(list_name=list_name, resource=resource))
+                resolved_handles.update(list_handles)
+            else:
+                list_account_ids = set(user_db.get_list_account_ids(list_name=list_name, resource=resource))
+                account_ids.update(list_account_ids)
         if handle.startswith('!'):
             # ! denotes Discord user
             member_identifier = handle[1:]
@@ -245,7 +253,7 @@ async def resolve_handles(ctx, converter, handles, *, mincnt=1, maxcnt=5, defaul
                 handle = user_db.get_handle(member.id, ctx.guild.id)
                 if handle is None:
                     raise HandleNotRegisteredError(member)
-                resolved_handles.append(handle)
+                resolved_handles.add(handle)
             else:
                 account_id = user_db.get_account_id(member.id, ctx.guild.id, resource=resource)
                 if account_id is None:
@@ -253,13 +261,13 @@ async def resolve_handles(ctx, converter, handles, *, mincnt=1, maxcnt=5, defaul
                 else:
                     account_ids.add(account_id)
         else:
-            resolved_handles.append(handle)
+            resolved_handles.add(handle)
         if handle in HandleIsVjudgeError.HANDLES:
             raise HandleIsVjudgeError(handle)
     if resource=='codeforces.com':
-        return resolved_handles
+        return list(resolved_handles)
     else:
-        return (list(account_ids),resolved_handles)
+        return (list(account_ids),list(resolved_handles))
 
 def members_to_handles(members: [discord.Member], guild_id):
     handles = []
