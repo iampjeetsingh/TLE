@@ -52,9 +52,10 @@ _DIVISION_RATING_LOW  = (2100, 1600, -1000)
 _DIVISION_RATING_HIGH = (9999, 2099,  1599)
 _SUPPORTED_CLIST_RESOURCES = ('codechef.com', 'atcoder.jp',
  'leetcode.com','codingcompetitions.withgoogle.com', 'facebook.com/hackercup')
-_CLIST_RESOURCE_SHORT_FORMS = {'cc':'codechef.com', 'cf':'codeforces.com',
- 'ac':'atcoder.jp', 'lc':'leetcode.com', 'google':'codingcompetitions.withgoogle.com',
- 'fb':'facebook.com/hackercup'}
+_CLIST_RESOURCE_SHORT_FORMS = {'cc':'codechef.com','codechef':'codechef.com', 'cf':'codeforces.com',
+ 'codeforces':'codeforces.com','ac':'atcoder.jp', 'atcoder':'atcoder.jp', 'lc':'leetcode.com', 
+ 'leetcode':'leetcode.com', 'google':'codingcompetitions.withgoogle.com',
+ 'fb':'facebook.com/hackercup', 'facebook':'facebook.com/hackercup'}
 
 CODECHEF_RATED_RANKS = (
     Rank(-10 ** 9, 1400, '1 Star', '1★', '#DADADA', 0x666666),
@@ -406,13 +407,15 @@ class Handles(commands.Cog):
     async def set(self, ctx, member: discord.Member, handle: str):
         """Set Codeforces handle of a user."""
         embed = None
+        resource = 'codeforces.com'
         if ':' in handle:
             resource = handle[0: handle.index(':')]
             handle = handle[handle.index(':')+1:]
+        if resource in _CLIST_RESOURCE_SHORT_FORMS:
+            resource = _CLIST_RESOURCE_SHORT_FORMS[resource]
+        if resource!='codeforces.com':
             if resource=='all':
                 resource = None
-            if resource in _CLIST_RESOURCE_SHORT_FORMS:
-                resource = _CLIST_RESOURCE_SHORT_FORMS[resource]
             if resource!=None and resource not in _SUPPORTED_CLIST_RESOURCES:
                 raise HandleCogError(f'The resource `{resource}` is not supported.')
             users = await clist.account(handle=handle, resource=resource)
@@ -496,13 +499,15 @@ class Handles(commands.Cog):
         For linking google and leetcode, please contact a moderator  
         """
         invoker = str(ctx.author)
+        resource = 'codeforces.com'
         if ':' in handle:
             resource = handle[0: handle.index(':')]
             handle = handle[handle.index(':')+1:]
+        if resource in _CLIST_RESOURCE_SHORT_FORMS:
+            resource = _CLIST_RESOURCE_SHORT_FORMS[resource]
+        if resource!='codeforces.com':
             if resource=='all':
                 return await ctx.send(f'Sorry `{invoker}`, all keyword can only be used with set command')
-            if resource in _CLIST_RESOURCE_SHORT_FORMS:
-                resource = _CLIST_RESOURCE_SHORT_FORMS[resource]
             if resource not in ['codechef.com','atcoder.jp']:
                 raise HandleCogError(f'{ctx.author.mention}, you cannot identify handles of {resource} as of now ')
             wait_msg = await ctx.channel.send('Fetching account details, please wait...')
