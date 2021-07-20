@@ -1,6 +1,7 @@
 import logging
 import os
 import datetime as dt
+from tle.util.codeforces_api import RatingChange, make_from_dict
 import requests
 import json
 
@@ -196,3 +197,23 @@ async def fetch_user_info(resource, account_ids):
     else:
         resp = resp['objects']
     return resp
+
+async def fetch_rating_changes(account_id):
+    resp = await statistics(account_id=account_id, order_by='date')
+    result = []
+    for changes in resp:
+        time = dt.datetime.strptime(changes['date'],'%Y-%m-%dT%H:%M:%S')
+        if changes['new_rating']==None: continue
+        rating_change = changes['rating_change'] if changes['rating_change']!=None else 0
+        old_rating = changes['old_rating'] if changes['old_rating']!=None else changes['new_rating']-rating_change
+        ratingchangedict = {
+            'contestId':changes['contest_id'], 
+            'contestName':changes['event'], 
+            'handle':changes['handle'], 
+            'rank':changes['place'], 
+            'ratingUpdateTimeSeconds':int((time-dt.datetime(1970,1,1)).total_seconds()), 
+            'oldRating':old_rating, 
+            'newRating':changes['new_rating']
+        }
+        result.append(make_from_dict(RatingChange, ratingchangedict))
+    return result

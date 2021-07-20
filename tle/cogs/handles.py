@@ -67,6 +67,17 @@ CODECHEF_RATED_RANKS = (
     Rank(2500, 10**9, '7 Star', '7★', '#F1C1C8', 0xd0011b)
 )
 
+ATCODER_RATED_RANKS = (
+    Rank(-10 ** 9, 400, 'Gray', 'Gray', '#DADADA', 0x808080),
+    Rank(400, 800, 'Brown', 'Brown', '#D9C5B2', 0x7F3F00),
+    Rank(800, 1200, 'Green', 'Green', '#B2D9B2', 0x007F00),
+    Rank(1200, 1600, 'Cyan', 'Cyan', '#B2ECEC', 0x00C0C0),
+    Rank(1600, 2000, 'Blue', 'Blue', '#B2B2FF', 0x0000FF),
+    Rank(2000, 2400, 'Yellow', 'Yellow', '#ECECB2', 0xBFBF00),
+    Rank(2400, 2800, 'Orange', 'Orange', '#FFD9B2', 0xF67B00),
+    Rank(2800, 10**9, 'Red', 'Red', '#FFB2B2', 0xF70000)
+)
+
 class HandleCogError(commands.CommandError):
     pass
 

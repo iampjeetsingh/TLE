@@ -4,6 +4,7 @@ import datetime as dt
 import time
 import itertools
 import math
+from tle.cogs.handles import ATCODER_RATED_RANKS, CODECHEF_RATED_RANKS, _CLIST_RESOURCE_SHORT_FORMS, _SUPPORTED_CLIST_RESOURCES
 from typing import List
 
 import discord
@@ -19,6 +20,7 @@ from matplotlib import dates as mdates
 from tle import constants
 from tle.util import codeforces_api as cf
 from tle.util import codeforces_common as cf_common
+from tle.util import clist_api as clist
 from tle.util import discord_common
 from tle.util import graph_common as gc
 
@@ -38,7 +40,7 @@ def nice_sub_type(types):
                 'PRACTICE':'Practice: {}'}
     return [nice_map[t] for t in types]
 
-def _plot_rating(resp, mark='o'):
+def _plot_rating(resp, mark='o', resource='codeforces.com'):
 
     for rating_changes in resp:
         ratings, times = [], []
@@ -53,11 +55,15 @@ def _plot_rating(resp, mark='o'):
                  markersize=3,
                  markerfacecolor='white',
                  markeredgewidth=0.5)
-
-    gc.plot_rating_bg(cf.RATED_RANKS)
+    if resource=='codechef.com':
+        gc.plot_rating_bg(CODECHEF_RATED_RANKS)
+    elif resource=='atcoder.jp':
+        gc.plot_rating_bg(ATCODER_RATED_RANKS)
+    else:
+        gc.plot_rating_bg(cf.RATED_RANKS)
     plt.gcf().autofmt_xdate()
 
-def _plot_perf(resp, mark='o'):
+def _plot_perf(resp, mark='o', resource='codeforces.com'):
 
     for rating_changes in resp:
         ratings, times = [], []
@@ -72,8 +78,12 @@ def _plot_perf(resp, mark='o'):
                  markersize=3,
                  markerfacecolor='white',
                  markeredgewidth=0.5)
-
-    gc.plot_rating_bg(cf.RATED_RANKS)
+    if resource=='codechef.com':
+        gc.plot_rating_bg(CODECHEF_RATED_RANKS)
+    elif resource=='atcoder.jp':
+        gc.plot_rating_bg(ATCODER_RATED_RANKS)
+    else:
+        gc.plot_rating_bg(cf.RATED_RANKS)
     plt.gcf().autofmt_xdate()    
 
 def _classify_submissions(submissions):
@@ -233,18 +243,39 @@ class Graphs(commands.Cog):
         (zoom, peak), args = cf_common.filter_flags(args, ['+zoom' , '+peak'])
         filt = cf_common.SubFilter()
         args = filt.parse(args)
-        handles = args or ('!' + str(ctx.author),)
-        handles = await cf_common.resolve_handles(ctx, self.converter, handles)
-        resp = [await cf.user.rating(handle=handle) for handle in handles]
-        resp = [filt.filter_rating_changes(rating_changes) for rating_changes in resp]
-
-        if not any(resp):
-            handles_str = ', '.join(f'`{handle}`' for handle in handles)
-            if len(handles) == 1:
-                message = f'User {handles_str} is not rated'
+        resource = 'codeforces.com'
+        for key in _CLIST_RESOURCE_SHORT_FORMS:
+            if key in args:
+                args.remove(key)
+                resource = _CLIST_RESOURCE_SHORT_FORMS[key]
+        for key in _SUPPORTED_CLIST_RESOURCES:
+            if key in args:
+                args.remove(key)
+                resource = key
+        resp = None
+        handles = []
+        if resource=='codeforces.com':
+            handles = args or ('!' + str(ctx.author),)
+            handles = await cf_common.resolve_handles(ctx, self.converter, handles)
+            resp = [await cf.user.rating(handle=handle) for handle in handles]
+            if not any(resp):
+                handles_str = ', '.join(f'`{handle}`' for handle in handles)
+                if len(handles) == 1:
+                    message = f'User {handles_str} is not rated'
+                else:
+                    message = f'None of the given users {handles_str} are rated'
+                raise GraphCogError(message)
+        else:
+            if resource not in ['codechef.com', 'atcoder.jp']:
+                raise GraphCogError('You cannot plot rating of '+resource+' as of now')
+            account_id = cf_common.user_db.get_account_id(ctx.author.id, ctx.guild.id, resource)
+            if account_id!=None:
+                resp = [await clist.fetch_rating_changes(account_id)]
+                handles.append(ctx.author.display_name)
             else:
-                message = f'None of the given users {handles_str} are rated'
-            raise GraphCogError(message)
+                raise cf_common.HandleNotRegisteredError(ctx.author)
+
+        resp = [filt.filter_rating_changes(rating_changes) for rating_changes in resp]
 
         def max_prefix(user):
             max_rate = 0
@@ -263,7 +294,7 @@ class Graphs(commands.Cog):
 
         plt.clf()
         plt.axes().set_prop_cycle(gc.rating_color_cycler)
-        _plot_rating(resp)
+        _plot_rating(resp, resource=resource)
         current_ratings = [rating_changes[-1].newRating if rating_changes else 'Unrated' for rating_changes in resp]
         labels = [gc.StrWrap(f'{handle} ({rating})') for handle, rating in zip(handles, current_ratings)]
         plt.legend(labels, loc='upper left')
@@ -294,12 +325,40 @@ class Graphs(commands.Cog):
         (zoom, peak), args = cf_common.filter_flags(args, ['+zoom' , '+asdfgdsafefsdve'])
         filt = cf_common.SubFilter()
         args = filt.parse(args)
-        handles = args or ('!' + str(ctx.author),)
-        handles = await cf_common.resolve_handles(ctx, self.converter, handles)
-        resp = [await cf.user.rating(handle=handle) for handle in handles]
+        resource = 'codeforces.com'
+        for key in _CLIST_RESOURCE_SHORT_FORMS:
+            if key in args:
+                args.remove(key)
+                resource = _CLIST_RESOURCE_SHORT_FORMS[key]
+        for key in _SUPPORTED_CLIST_RESOURCES:
+            if key in args:
+                args.remove(key)
+                resource = key
+        resp = None
+        handles = []
+        if resource=='codeforces.com':
+            handles = args or ('!' + str(ctx.author),)
+            handles = await cf_common.resolve_handles(ctx, self.converter, handles)
+            resp = [await cf.user.rating(handle=handle) for handle in handles]
+            if not any(resp):
+                handles_str = ', '.join(f'`{handle}`' for handle in handles)
+                if len(handles) == 1:
+                    message = f'User {handles_str} is not rated'
+                else:
+                    message = f'None of the given users {handles_str} are rated'
+                raise GraphCogError(message)
+        else:
+            if resource not in ['codechef.com', 'atcoder.jp']:
+                raise GraphCogError('You cannot plot performance of '+resource+' as of now')
+            account_id = cf_common.user_db.get_account_id(ctx.author.id, ctx.guild.id, resource)
+            if account_id!=None:
+                resp = [await clist.fetch_rating_changes(account_id)]
+                handles.append(ctx.author.display_name)
+            else:
+                raise cf_common.HandleNotRegisteredError(ctx.author)
         # extract last rating before corrections
         current_ratings = [rating_changes[-1].newRating if rating_changes else 'Unrated' for rating_changes in resp]
-        resp = cf.user.correct_rating_changes(resp=resp)
+        resp = cf.user.correct_rating_changes(resp=resp, resource=resource)
         resp = [filt.filter_rating_changes(rating_changes) for rating_changes in resp]
         
         if not any(resp):
@@ -312,7 +371,7 @@ class Graphs(commands.Cog):
 
         plt.clf()
         plt.axes().set_prop_cycle(gc.rating_color_cycler)
-        _plot_perf(resp)
+        _plot_perf(resp, resource=resource)
         labels = [gc.StrWrap(f'{handle} ({rating})') for handle, rating in zip(handles, current_ratings)]
         plt.legend(labels, loc='upper left')
 
