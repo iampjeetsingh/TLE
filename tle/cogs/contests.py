@@ -453,9 +453,14 @@ class Contests(commands.Cog):
                 raise ContestCogError('Contest not found.') 
             contest_id = contest['id']
             account_ids= await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True, resource=contest['resource'])
+            standings_to_show = []
             standings = await clist.statistics(contest_id=contest_id, account_ids=account_ids)
-            standings.sort(key=lambda standing: int(standing['place']))
-            content = self._make_clist_standings_pages(standings)
+            for standing in standings:
+                if not standing['place'] or not standing['handle']:
+                    continue
+                standings_to_show.append(standing)
+            standings_to_show.sort(key=lambda standing: int(standing['place']))
+            content = self._make_clist_standings_pages(standings_to_show)
             await wait_msg.delete()
             await ctx.channel.send(embed=self._make_contest_embed_for_cranklist(contest))
             await ctx.channel.send(content)
