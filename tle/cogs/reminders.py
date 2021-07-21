@@ -24,6 +24,7 @@ from tle.util import paginator
 from tle import constants
 from tle.util import clist_api as clist
 from tle.util import codeforces_common as cf_common
+from tle.cogs.handles import _CLIST_RESOURCE_SHORT_FORMS, _SUPPORTED_CLIST_RESOURCES
 
 _CONTESTS_PER_PAGE = 5
 _CONTEST_PAGINATE_WAIT_TIME = 5 * 60
@@ -223,14 +224,14 @@ class Reminders(commands.Cog):
                 _WEBSITE_ALLOWED_PATTERNS,
                 _WEBSITE_DISALLOWED_PATTERNS)]
 
-    def get_guild_contests(self, contests, guild_id):
+    def get_guild_contests(self, contests, guild_id, resources=None):
         settings = cf_common.user_db.get_reminder_settings(guild_id)
         _, _, _, _, website_allowed_patterns, website_disallowed_patterns = \
             settings
         website_allowed_patterns = json.loads(website_allowed_patterns)
         website_disallowed_patterns = json.loads(website_disallowed_patterns)
         contests = [contest for contest in contests if contest.is_desired(
-            website_allowed_patterns, website_disallowed_patterns)]
+            website_allowed_patterns, website_disallowed_patterns, resources)]
         return contests
 
     def _reschedule_all_tasks(self):
@@ -595,9 +596,18 @@ class Reminders(commands.Cog):
         await ctx.send_help(ctx.command)
 
     @clist.command(brief='List future contests')
-    async def future(self, ctx):
+    async def future(self, ctx, *resources):
         """List future contests."""
-        contests = self.get_guild_contests(self.future_contests, ctx.guild.id)
+        filter = []
+        for resource in resources:
+            if resource in _CLIST_RESOURCE_SHORT_FORMS:
+                resource = _CLIST_RESOURCE_SHORT_FORMS[resource]
+            if resource not in _SUPPORTED_CLIST_RESOURCES and resource!='codeforces.com':
+                return await ctx.send(str(resource)+' is not supported.')
+            filter.append(resource)
+        if len(filter)==0:
+            filter = None
+        contests = self.get_guild_contests(self.future_contests, ctx.guild.id, resources=filter)
         await self._send_contest_list(ctx, contests,
                                       title='Future contests',
                                       empty_msg='No future contests scheduled'

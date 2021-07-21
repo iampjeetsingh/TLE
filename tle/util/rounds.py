@@ -26,7 +26,10 @@ class Round:
     def is_desired(
             self,
             website_allowed_patterns,
-            website_disallowed_patterns):
+            website_disallowed_patterns,
+            resources=None):
+        if resources!=None:
+            return self.website in resources
         for disallowed_pattern in website_disallowed_patterns[self.website]:
             if disallowed_pattern in self.name.lower():
                 return False
