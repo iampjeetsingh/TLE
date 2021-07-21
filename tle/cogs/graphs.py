@@ -269,10 +269,7 @@ class Graphs(commands.Cog):
                 raise GraphCogError('You cannot plot rating of '+resource+' as of now')
             if args:
                 handles = args
-                account_ids, handles = await cf_common.resolve_handles(ctx, self.converter, handles, resource=resource)
-                if len(handles)!=0:
-                    for user in await clist.fetch_user_info(resource=resource, handles=handles):
-                        account_ids.append(int(user['id']))
+                account_ids = await cf_common.resolve_handles(ctx, self.converter, handles, resource=resource)
                 data = dict()
                 for change in await clist.fetch_rating_changes(account_ids):
                     if change.handle in data:
@@ -369,10 +366,7 @@ class Graphs(commands.Cog):
                 raise GraphCogError('You cannot plot performance of '+resource+' as of now')
             if args:
                 handles = args
-                account_ids, handles = await cf_common.resolve_handles(ctx, self.converter, handles, resource=resource)
-                if len(handles)!=0:
-                    for user in await clist.fetch_user_info(resource=resource, handles=handles):
-                        account_ids.append(int(user['id']))
+                account_ids = await cf_common.resolve_handles(ctx, self.converter, handles, resource=resource)
                 data = dict()
                 for change in await clist.fetch_rating_changes(account_ids):
                     if change.handle in data:

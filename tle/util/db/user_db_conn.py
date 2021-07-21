@@ -1136,6 +1136,26 @@ class UserDbConn:
         self.update()
         return res
     
+    def get_account_id_from_handle(self, handle, resource=None):
+        if resource==None:
+            return None
+        query1 = '''
+            SELECT account_id FROM clist_account_ids
+            WHERE handle = ? AND resource = ? 
+        '''
+        query2 = '''
+            SELECT account_id FROM list_handles
+            WHERE handle = ? AND resource = ? 
+        '''
+
+        res = self.conn.execute(query1, (handle,resource)).fetchone()
+        if res is None:
+            res = self.conn.execute(query2, (handle,resource)).fetchone()
+        if res is None:
+            return None
+        account_id, = res
+        return account_id
+    
     def ban_user(self, user_id):
         query = ('INSERT OR REPLACE INTO bans '
                  '(user_id) '

@@ -12,6 +12,7 @@ import discord
 from tle import constants
 from tle.util import cache_system2
 from tle.util import codeforces_api as cf
+from tle.util import clist_api as clist
 from tle.util import db
 from tle.util import events
 
@@ -230,7 +231,7 @@ async def resolve_handles(ctx, converter, handles, *, mincnt=1, maxcnt=5, defaul
             guild_account_ids = {account_id for user_id, account_id, handle 
             in user_db.get_account_ids_for_resource(ctx.guild.id, resource=resource)}
             account_ids.update(guild_account_ids)
-    if len(handles) < mincnt or (maxcnt and maxcnt < len(handles)):
+    if len(account_ids)==0 and (len(handles) < mincnt or (maxcnt and maxcnt < len(handles))):
         raise HandleCountOutOfBoundsError(mincnt, maxcnt)
     resolved_handles = set()
     for handle in handles:
@@ -242,7 +243,7 @@ async def resolve_handles(ctx, converter, handles, *, mincnt=1, maxcnt=5, defaul
             else:
                 list_account_ids = set(user_db.get_list_account_ids(list_name=list_name, resource=resource))
                 account_ids.update(list_account_ids)
-        if handle.startswith('!'):
+        elif handle.startswith('!'):
             # ! denotes Discord user
             member_identifier = handle[1:]
             try:
@@ -261,13 +262,25 @@ async def resolve_handles(ctx, converter, handles, *, mincnt=1, maxcnt=5, defaul
                 else:
                     account_ids.add(account_id)
         else:
-            resolved_handles.add(handle)
+            if resource=='codeforces.com':
+                resolved_handles.add(handle)
+            else:
+                account_id = user_db.get_account_id_from_handle(handle=handle, resource=resource)
+                if account_id is None:
+                    resolved_handles.add(handle)
+                else:
+                    account_ids.add(account_id)
         if handle in HandleIsVjudgeError.HANDLES:
             raise HandleIsVjudgeError(handle)
     if resource=='codeforces.com':
         return list(resolved_handles)
     else:
-        return (list(account_ids),list(resolved_handles))
+        if len(resolved_handles)!=0:
+            clist_users = await clist.fetch_user_info(resource=resource, handles=list(resolved_handles))
+            if clist_users!=None:
+                for user in clist_users:
+                    account_ids.add(int(user['id']))
+        return list(account_ids)
 
 def members_to_handles(members: [discord.Member], guild_id):
     handles = []
