@@ -13,16 +13,13 @@ The features of the bot are split into a number of cogs, each handling their own
 - **Graphs** Plots various data gathered from Codeforces, e.g. rating distributions and user problem statistics.
 - **Handles** Gets or sets information about a specific user's Codeforces handle, or shows a list of Codeforces handles.
 
-### CSES cog
-
-- **CSES** Commands related to the [CSES problemset](https://cses.fi/problemset/), such as showing leaderboards.
-
 ### Other cogs
 
 - **Starboard** Commands related to the starboard, which adds messages to a specific channel when enough users react with a ⭐️.
 - **CacheControl** Commands related to data caching.
 
 ## Installation
+
 > If you want to run the bot inside a docker container follow these [instructions](/Docker.md)
 
 Clone the repository
@@ -82,9 +79,9 @@ Fill in appropriate variables in new "environment" file.
 - **BOT_TOKEN**: the Discord Bot Token for your bot.
 - **LOGGING_COG_CHANNEL_ID**: the [Discord Channel ID](https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID-) of a Discord Channel where you want error messages sent to.
 - **ALLOW_DUEL_SELF_REGISTER**: boolean value indicating if self registration for duels is enabled.
-- **TLE_ADMIN**: the name of the role that can run admin commands of the bot. If this is not set, the role name will default to "Admin".
 - **TLE_MODERATOR**: the name of the role that can run moderator commands of the bot. If this is not set, the role name will default to "Moderator".
-- **STORAGE_BUCKET**: the link of firebase storage bucket to save backups of database
+- **STORAGE_BUCKET**(Optional): the link of firebase storage bucket for saving backups. Note: this variable is only required when you want to enable automated backups to firebase storage (If you are deploying on heroku, you need to enable this otherwise you might lose data every 24 hrs).
+- **CLIST_API_TOKEN**: https://clist.by is used to fetch list of upcoming contests, just replace your clist username and api key into the environment file.
 
 #### For Setting Up Backups to Firebase Storage
 
@@ -102,7 +99,7 @@ To start TLE just run:
 - In order to run admin-only commands, you need to have the `Admin` role, which needs to be created in your Discord server and assign it to yourself/other administrators.
 - In order to prevent the bot suggesting an author's problems to the author, a python file needs to be run (since this can not be done through the Codeforces API) which will save the authors for specific contests to a file. To do this run `python extra/scrape_cf_contest_writers.py` which will generate a JSON file that should be placed in the `data/misc/` folder.
 - In order to display CJK (East Asian) characters for usernames, we need appropriate fonts. Their size is ~36MB, so we don't keep in the repo itself and it is gitignored. They will be downloaded automatically when the bot is run if not already present.
-- One of the bot's features is to assign roles to users based on their rating on Codeforces. In order for this functionality to work properly, the following roles need to exist in your Discord server
+- One of the bot's features is to assign roles to users based on their rating on Codeforces/CodeChef. In order for this functionality to work properly, the following roles need to exist in your Discord server for codeforces and codechef based roles respectively
   - Newbie
   - Pupil
   - Specialist
@@ -113,6 +110,16 @@ To start TLE just run:
   - Grandmaster
   - International Grandmaster
   - Legendary Grandmaster
+  - 1 Star
+  - 2 Star
+  - 3 Star
+  - 4 Star
+  - 5 Star
+  - 6 Star
+  - 7 Star
+    You don't need to manually create the roles instead your can use the following commands
+    `;createroles codeforces` and `;createroles codechef`.
+    For now, codechef based roles are not updated automatically instead you'll need to run `;roleupdate codechef` after every contest's rating changes are published. Since, the frequency of contests is low on codechef, the moderators can take care of it.
 - One of the bot's commands require problemsets to be cached. Run `;cache problemsets all` at the very first time the bot is used. The command may take around 10 minutes to run.
 
 ## Usage
