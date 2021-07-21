@@ -269,8 +269,9 @@ class Contests(commands.Cog):
             header = ['#', 'Name', 'Score', 'Delta', 'New Rating']
             body = []
             for standing in standings:
-                delta = int(standing['rating_change'])
-                delta = '+'+str(delta) if delta>0 else str(delta)
+                delta = int(standing['rating_change']) if standing['rating_change'] else 'N/A'
+                if delta!='N/A':
+                    delta = '+'+str(delta) if delta>0 else str(delta)
                 tokens = [int(standing['place']), standing['handle'], int(standing['score']) if standing['score'] is not None else 0, delta, standing['new_rating']]
                 body.append(tokens)
             t = table.Table(table.Style(header=header_style, body=body_style))
