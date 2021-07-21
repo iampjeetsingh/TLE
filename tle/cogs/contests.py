@@ -34,6 +34,32 @@ _WATCHING_RATED_VC_WAIT_TIME = 5 * 60  # seconds
 _RATED_VC_EXTRA_TIME = 10 * 60  # seconds
 _MIN_RATED_CONTESTANTS_FOR_RATED_VC = 50
 
+_PATTERNS = {
+    'abc': 'atcoder.jp',
+    'arc': 'atcoder.jp',
+    'agc': 'atcoder.jp',
+    'kickstart': 'codingcompetitions.withgoogle.com',
+    'codejam': 'codingcompetitions.withgoogle.com',
+    'lunchtime': 'codechef.com',
+    'long': 'codechef.com',
+    'cookoff': 'codechef.com',
+    'starters': 'codechef.com'
+}
+
+def parse_date(arg):
+    try:
+        if len(arg) == 8:
+            fmt = '%d%m%Y'
+        elif len(arg) == 6:
+            fmt = '%m%Y'
+        elif len(arg) == 4:
+            fmt = '%Y'
+        else:
+            raise ValueError
+        return dt.datetime.strptime(arg, fmt)
+    except ValueError:
+        raise ContestCogError(f'{arg} is an invalid date argument')
+
 class ContestCogError(commands.CommandError):
     pass
 
@@ -301,17 +327,130 @@ class Contests(commands.Cog):
             embed.add_field(name='Tick tock', value=msg, inline=False)
         return embed
 
+    async def resolve_contest(self, contest_id, resource):
+        contest = None
+        if resource=='clist.by':
+            contest = await clist.contest(contest_id)
+        elif resource=='atcoder.jp':
+            prefix = contest_id[:3]
+            if prefix=='abc':
+                prefix = 'AtCoder Beginner Contest '
+            if prefix=='arc':
+                prefix = 'AtCoder Regular Contest '
+            if prefix=='agc':
+                prefix = 'AtCoder Grand Contest '
+            suffix = contest_id[3:]
+            try:
+                suffix = int(suffix)
+            except:
+                raise ContestCogError('Invalid contest_id provided.') 
+            contest_name = prefix+str(suffix)
+            contests = await clist.search_contest(regex=contest_name, resource=resource)
+            if contests==None or len(contests)==0:
+                raise ContestCogError('Contest not found.')
+            contest = contests[0] 
+        elif resource=='codechef.com':
+            contest_name = None
+            if 'lunchtime' in contest_id:
+                date = parse_date(contest_id[9:])
+                contest_name = str(date.strftime('%B'))+' Lunchtime '+str(date.strftime('%Y'))
+            elif 'cookoff' in contest_id:
+                date = parse_date(contest_id[7:])
+                contest_name = str(date.strftime('%B'))+' Cook-Off '+str(date.strftime('%Y'))
+            elif 'long' in contest_id:
+                date = parse_date(contest_id[4:])
+                contest_name = str(date.strftime('%B'))+' Challenge '+str(date.strftime('%Y'))
+            elif 'starters' in contest_id:
+                date = parse_date(contest_id[8:])
+                contest_name = str(date.strftime('%B'))+' CodeChef Starters '+str(date.strftime('%Y'))
+            contests = await clist.search_contest(regex=contest_name, resource=resource)
+            if contests==None or len(contests)==0:
+                raise ContestCogError('Contest not found.')
+            contest = contests[0] 
+        elif resource=='codingcompetitions.withgoogle.com':
+            year,round = None,None
+            contest_name = None
+            if 'kickstart' in contest_id:
+                year = contest_id[9:11]
+                round = contest_id[11:]
+                contest_name = 'Kick Start.*Round '+round
+            elif 'codejam' in contest_id:
+                year = contest_id[7:9]
+                round = contest_id[9:]
+                if round=='WF':
+                    round = 'Finals'
+                    contest_name = 'Code Jam.*Finals'
+                elif round=='QR':
+                    round = 'Qualification Round'
+                    contest_name = 'Code Jam.*Qualification Round'
+                else:
+                    contest_name = 'Code Jam.*Round '+round
+            if not round:
+                    raise ContestCogError('Invalid contest_id provided.') 
+            try:
+                year = int(year)
+            except:
+                raise ContestCogError('Invalid contest_id provided.') 
+            start = dt.datetime(int('20'+str(year)), 1, 1)
+            end = dt.datetime(int('20'+str(year+1)), 1, 1)
+            date_limit = (start.strftime('%Y-%m-%dT%H:%M:%S'), end.strftime('%Y-%m-%dT%H:%M:%S'))
+            contests = await clist.search_contest(regex=contest_name, resource=resource, date_limits=date_limit)
+            if contests==None or len(contests)==0:
+                raise ContestCogError('Contest not found.')
+            contest = contests[0]
+        return contest
+
     @commands.command(brief='Show ranklist for given handles and/or server members')
-    async def ranklist(self, ctx, contest_id: int, *handles: str):
+    async def ranklist(self, ctx, contest_id: str, *handles: str):
         """Shows ranklist for the contest with given contest id. If handles contains
         '+server', all server members are included. No handles defaults to '+server'.
+        
+        You can frame contest_id as follow
+        
+        # For codeforces ranklist
+        Enter codeforces contest id
+
+        # For codechef ranklist
+        long<MMYYYY>
+        lunchtime<MMYYYY>
+        cookoff<MMYYYY>
+        starters<MMYYYY>
+
+        # For atcoder ranklist
+        abc<Number> 
+        arc<Number> 
+        agc<Number>
+
+        # For google ranklist
+        kickstart<YY><Round>
+        codejam<YY><Round>
+
+        Use QR for Qualification Round and WF for World Finals.
+
+        # If nothing works
+        Use clist contest_id. You have to prefix - sign to clist contest-id otherwise it will be considered a codeforces contest id.
+        To know clist contest_id of a recent contest write ;clist finished or visit https://clist.by to get the id.
         """
         msg = "Generating ranklist, please wait..."
-        if contest_id<0 : msg += "\nThis will take few minutes, sit back and relax."
         wait_msg = await ctx.channel.send(msg)
-        if contest_id<0:
-            contest_id = -1*contest_id
-            contest = await clist.contest(contest_id)
+        resource = 'codeforces.com'
+        for pattern in _PATTERNS:
+            if pattern in contest_id:
+                resource = _PATTERNS[pattern]
+                break
+        if resource=='codeforces.com':
+            try:
+                contest_id = int(contest_id)
+                if contest_id<0:
+                    contest_id = -1*contest_id
+                    resource = 'clist.by'
+            except:
+                raise ContestCogError('Invalid contest_id provided.') 
+        if resource!='codeforces.com':
+            contest = await self.resolve_contest(contest_id=contest_id, resource=resource)
+            if contest is None:
+                raise ContestCogError('Contest not found.') 
+            contest_id = contest['id']
             account_ids= await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True, resource=contest['resource'])
             standings = await clist.statistics(contest_id=contest_id, account_ids=account_ids)
             standings.sort(key=lambda standing: int(standing['place']))
