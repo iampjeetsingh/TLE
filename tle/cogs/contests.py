@@ -248,31 +248,32 @@ class Contests(commands.Cog):
         if standings is None or len(standings)==0:
             return "```No handles found inside ranklist```"
         show_rating_changes = standings[0]['rating_change']!=None
-        t = None
+
+        pages = []
+        standings_chunks = paginator.chunkify(standings, _STANDINGS_PER_PAGE)
+        num_chunks = len(standings_chunks)
+
         if not show_rating_changes:
             header_style = '{:>} {:<}    {:^}  '
             body_style   = '{:>} {:<}    {:<}  '
             header = ['#', 'Name', 'Score']
-            body = []
-            for standing in standings:
-                tokens = [int(standing['place']), standing['handle'], int(standing['score']) if standing['score'] is not None else 0]
-                body.append(tokens)
-            t = table.Table(table.Style(header=header_style, body=body_style))
-            t += table.Header(*header)
-            t += table.Line('\N{EM DASH}')
-            for row in body:
-                t += table.Data(*row)
-            t += table.Line('\N{EM DASH}')
         else:
             header_style = '{:>} {:<}    {:^}    {:<}    {:<}  '
             body_style   = '{:>} {:<}    {:<}    {:<}    {:<}  '
             header = ['#', 'Name', 'Score', 'Delta', 'New Rating']
+        
+        num_pages = 1
+        for standings_chunk in standings_chunks:
             body = []
-            for standing in standings:
-                delta = int(standing['rating_change']) if standing['rating_change'] else 'N/A'
-                if delta!='N/A':
-                    delta = '+'+str(delta) if delta>0 else str(delta)
-                tokens = [int(standing['place']), standing['handle'], int(standing['score']) if standing['score'] is not None else 0, delta, standing['new_rating']]
+            for standing in standings_chunk:
+                score = int(standing['score']) if standing['score'] else 0
+                if show_rating_changes:
+                    delta = int(standing['rating_change']) if standing['rating_change'] else ' '
+                    if delta!=' ':
+                        delta = '+'+str(delta) if delta>0 else str(delta)
+                    tokens = [int(standing['place']), standing['handle'], score, delta, standing['new_rating']]
+                else:
+                    tokens = [int(standing['place']), standing['handle'], score]
                 body.append(tokens)
             t = table.Table(table.Style(header=header_style, body=body_style))
             t += table.Header(*header)
@@ -280,9 +281,13 @@ class Contests(commands.Cog):
             for row in body:
                 t += table.Data(*row)
             t += table.Line('\N{EM DASH}')
-        # We use yaml to get nice colors in the ranklist.
-        content = f'```yaml\n{t}\n```'
-        return content
+            page_num_footer = f' # Page: {num_pages} / {num_chunks}' if num_chunks > 1 else ''
+
+            # We use yaml to get nice colors in the ranklist.
+            content = f'```yaml\n{t}\n{page_num_footer}```'
+            pages.append((content, None))
+            num_pages += 1
+        return pages
     
     @staticmethod
     def _make_contest_embed_for_cranklist(contest):
@@ -460,10 +465,10 @@ class Contests(commands.Cog):
                     continue
                 standings_to_show.append(standing)
             standings_to_show.sort(key=lambda standing: int(standing['place']))
-            content = self._make_clist_standings_pages(standings_to_show)
+            pages = self._make_clist_standings_pages(standings_to_show)
             await wait_msg.delete()
             await ctx.channel.send(embed=self._make_contest_embed_for_cranklist(contest))
-            await ctx.channel.send(content)
+            paginator.paginate(self.bot, ctx.channel, pages, wait_time=_STANDINGS_PAGINATE_WAIT_TIME)
         else:
             handles = await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True)
             contest = cf_common.cache2.contest_cache.get_contest(contest_id)
