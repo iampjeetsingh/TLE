@@ -158,6 +158,9 @@ class FindMemberFailedError(ResolveHandleError):
     def __init__(self, member):
         super().__init__(f'Unable to convert `{member}` to a server member')
 
+class FindRoleFailedError(ResolveHandleError):
+    def __init__(self, role):
+        super().__init__(f'Unable to convert `{role}` to a server role')
 
 class HandleNotRegisteredError(ResolveHandleError):
     def __init__(self, member, resource='Codeforces'):
@@ -217,6 +220,7 @@ def days_ago(t):
 async def resolve_handles(ctx, converter, handles, *, mincnt=1, maxcnt=5, default_to_all_server=False, resource='codeforces.com'):
     """Convert an iterable of strings to CF handles. A string beginning with ! indicates Discord username,
      otherwise it is a raw CF handle to be left unchanged."""
+    role_converter = commands.RoleConverter()
     handles = set(handles)
     if default_to_all_server and not handles:
         handles.add('+server')
@@ -235,7 +239,23 @@ async def resolve_handles(ctx, converter, handles, *, mincnt=1, maxcnt=5, defaul
         raise HandleCountOutOfBoundsError(mincnt, maxcnt)
     resolved_handles = set()
     for handle in handles:
-        if handle.startswith('+'):
+        if handle.startswith('+!'):
+            role_identifier = handle[2:]
+            try:
+                role = await role_converter.convert(ctx, role_identifier)
+            except commands.errors.CommandError:
+                raise FindRoleFailedError(role_identifier)
+            for member in ctx.guild.members:
+                if role in member.roles:
+                    if resource=='codeforces.com':
+                        handle = user_db.get_handle(member.id, ctx.guild.id)
+                        if handle is not None:
+                            resolved_handles.add(handle)
+                    else:
+                        account_id = user_db.get_account_id(member.id, ctx.guild.id, resource=resource)
+                        if account_id is not None:
+                            account_ids.add(account_id)
+        elif handle.startswith('+'):
             list_name = handle[1:]
             if resource=='codeforces.com':
                 list_handles = set(user_db.get_list_handles(list_name=list_name, resource=resource))
