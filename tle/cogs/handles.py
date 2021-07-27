@@ -96,7 +96,10 @@ def discord_color_to_hex(color):
 
 def rating_to_color(rating):
     """returns (r, g, b) pixels values corresponding to rating"""
-    h = discord_color_to_hex(rating2rank(rating).color_embed)
+    rank = rating2rank(rating)
+    if rank is None:
+        return None
+    h = discord_color_to_hex(rank.color_embed)
     return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
 
 def rating2star(rating):
@@ -241,7 +244,7 @@ def get_prettyhandles_image(rows, font, color_converter=rating_to_color):
         name = _trim(name)
         handle = _trim(handle)
         color = color_converter(rating)
-        draw_row(str(pos), name, handle, str(rating) if rating else 'N/A', color, y)
+        draw_row(str(pos), name, handle, str(rating) if rating else 'N/A', color or BLACK, y)
         if rating and rating >= 3000:  # nutella
             nutella_x = START_X + WIDTH_RANK
             draw.text((nutella_x, y), name[0], fill=BLACK, font=font)
@@ -883,6 +886,8 @@ class Handles(commands.Cog):
         resource = None
         if arg1!=None and arg2!=None:
             resource = arg1
+            if resource in _CLIST_RESOURCE_SHORT_FORMS:
+                resource = _CLIST_RESOURCE_SHORT_FORMS[arg1]
             try:
                 page_no = int(arg2)
             except:
