@@ -504,12 +504,28 @@ class Codeforces(commands.Cog):
         else:
             await ctx.send(f'Failed to force challenge skip.')
 
-    @commands.command(brief='Recommend a contest', usage='[handles...] [+pattern...]')
+    @commands.command(brief='Recommend a contest', usage='[handles...] [+pattern...] [?message_urls...]')
     async def vc(self, ctx, *args: str):
         """Recommends a contest based on Codeforces rating of the handle provided.
-        e.g ;vc mblazev c1729 +global +hello +goodbye +avito"""
+        e.g ;vc mblazev c1729 +global +hello +goodbye +avito
+        
+        You can also get vc recommendations for a group of people who have reacted to a particular message.
+        ;vc ?<Here comes the link of message> +educational
+        """
         markers = [x for x in args if x[0] == '+']
-        handles = [x for x in args if x[0] != '+'] or ('!' + str(ctx.author),)
+        messages = [x[1:] for x in args if x[0]=='?']
+        handles = [x for x in args if x[0] != '+' and x[0]!='?'] or ['!' + str(ctx.author),]
+        if messages:
+            message_converter = commands.MessageConverter()
+            for message in messages:
+                try:
+                    message = await message_converter.convert(ctx, message)
+                except commands.errors.CommandError:
+                    raise CodeforcesCogError('Failed to resolve message_url')
+                for reaction in message.reactions:
+                    users = await reaction.users().flatten()
+                    for user in users:
+                        handles.append('!'+str(user))
         handles = await cf_common.resolve_handles(ctx, self.converter, handles, maxcnt=25)
         info = await cf.user.info(handles=handles)
         contests = cf_common.cache2.contest_cache.get_contests_in_phase('FINISHED')

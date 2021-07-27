@@ -126,6 +126,10 @@ class Contests(commands.Cog):
 
         self.logger = logging.getLogger(self.__class__.__name__)
 
+    @commands.Cog.listener()
+    @discord_common.once
+    async def on_ready(self):
+        self._watch_rated_vcs_task.start()
     
     @staticmethod
     def _make_contest_pages(contests, title):
@@ -520,6 +524,19 @@ class Contests(commands.Cog):
         pages = self._make_standings_pages(contest, problem_indices, handle_standings, deltas)
         paginator.paginate(self.bot, channel, pages, wait_time=_STANDINGS_PAGINATE_WAIT_TIME, delete_after=delete_after)
 
+    @commands.command(brief='Start a rated vc for people who have reacted to a message.', usage='<contest_id> <message url>')
+    async def ratedvcfor(self, ctx, contest_id: int, message_url:str):
+        message_converter = commands.MessageConverter()
+        try:
+            message = await message_converter.convert(ctx, message_url)
+        except commands.errors.CommandError:
+            raise ContestCogError('Failed to resolve message_url')
+        members = []
+        for reaction in message.reactions:
+            users = await reaction.users().flatten()
+            members+=users
+        await self.ratedvc(ctx, contest_id, *members)
+
     @commands.command(brief='Start a rated vc.', usage='<contest_id> <@user1 @user2 ...>')
     async def ratedvc(self, ctx, contest_id: int, *members: discord.Member):
         ratedvc_channel_id = cf_common.user_db.get_rated_vc_channel(ctx.guild.id)
@@ -659,12 +676,6 @@ class Contests(commands.Cog):
             return
         for rated_vc_id in ongoing_rated_vcs:
             await self._watch_rated_vc(rated_vc_id)
-
-    @commands.command(brief='To forcefully refresh ongoing ratedvc standings')
-    @commands.check_any(commands.has_role('Admin'), commands.is_owner())
-    async def refresh_ratedvc(self, ctx):
-        self._watch_rated_vcs_task.start()
-        await ctx.send(embed=discord_common.embed_success('Rated VCs will be refreshed soon...'))
 
     @commands.command(brief='Unregister this user from an ongoing ratedvc', usage='@user')
     @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
