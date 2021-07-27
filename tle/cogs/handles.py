@@ -97,7 +97,7 @@ def discord_color_to_hex(color):
 def rating_to_color(rating):
     """returns (r, g, b) pixels values corresponding to rating"""
     rank = rating2rank(rating)
-    if rank is None:
+    if rank is None or rank.color_embed is None:
         return None
     h = discord_color_to_hex(rank.color_embed)
     return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
