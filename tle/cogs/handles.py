@@ -982,8 +982,8 @@ class Handles(commands.Cog):
         if not res:
             raise HandleCogError('Handles not set for any user')
         id_to_member = {account_id: guild.get_member(user_id) for user_id, account_id, handle in res}
-        handles = [handle for user_id, account_id, handle in res]
-        clist_users = await clist.fetch_user_info("codechef.com", handles)
+        account_ids = [account_id for user_id, account_id, handle in res]
+        clist_users = await clist.fetch_user_info("codechef.com", account_ids=account_ids)
         required_roles = {rating2star(user['rating']).title for user in clist_users if user['rating']!=None}
         star2role = {role.name: role for role in guild.roles if role.name in required_roles}
         missing_roles = required_roles - star2role.keys()
