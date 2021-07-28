@@ -469,9 +469,9 @@ class Contests(commands.Cog):
                     continue
                 standings_to_show.append(standing)
             standings_to_show.sort(key=lambda standing: int(standing['place']))
-            pages = self._make_clist_standings_pages(standings_to_show)
-            if len(pages)==0:
+            if len(standings_to_show)==0:
                 raise ContestCogError('Ranklist for this contest is not yet available, please come back later.') 
+            pages = self._make_clist_standings_pages(standings_to_show)
             await wait_msg.delete()
             await ctx.channel.send(embed=self._make_contest_embed_for_cranklist(contest))
             paginator.paginate(self.bot, ctx.channel, pages, wait_time=_STANDINGS_PAGINATE_WAIT_TIME)
