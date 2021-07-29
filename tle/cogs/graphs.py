@@ -2,6 +2,7 @@ import bisect
 import collections
 import datetime as dt
 import time
+import re
 import itertools
 import math
 from tle.cogs.handles import ATCODER_RATED_RANKS, CODECHEF_RATED_RANKS, _CLIST_RESOURCE_SHORT_FORMS, _SUPPORTED_CLIST_RESOURCES
@@ -235,6 +236,92 @@ class Graphs(commands.Cog):
         use a server member's name instead by prefixing it with '!',
         for name with spaces use "!name with spaces" (with quotes)."""
         await ctx.send_help('plot')
+
+    @plot.command(brief='Plot CodeChef rating graph excluding long challenges', usage='[+zoom] [+peak] [handles...] [d>=[[dd]mm]yyyy] [d<[[dd]mm]yyyy]')
+    async def nolongrating(self, ctx, *args: str):
+        (zoom, peak), args = cf_common.filter_flags(args, ['+zoom' , '+peak'])
+        filt = cf_common.SubFilter()
+        args = filt.parse(args)
+        resource = 'codechef.com'
+        resp = None
+        if args:
+            handles = args
+            account_ids = await cf_common.resolve_handles(ctx, self.converter, handles, resource=resource)
+            data = dict()
+            for change in await clist.fetch_rating_changes(account_ids):
+                if change.handle in data:
+                    data[change.handle].append(change)
+                else:
+                    data[change.handle] = [change,]
+            resp = []
+            months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+            for key in data:
+                changes = data[key]
+                filtered_changes = []
+                current_rating = 1500
+                for change in changes:
+                    data = {'contestId':change.contestId, 'contestName':change.contestName, 'handle':change.handle, 'rank':change.rank, 
+                            'ratingUpdateTimeSeconds':change.ratingUpdateTimeSeconds, 'oldRating':change.oldRating, 'newRating':change.newRating}
+                    if any([re.search(month+' Challenge ....', data['contestName']) for month in months]):
+                        continue
+                    performance = int(data['oldRating'])+4*(int(data['newRating'])-int(data['oldRating']))
+                    delta = (performance-current_rating)//4
+                    new_rating = current_rating+delta
+                    data['oldRating'] = current_rating
+                    data['newRating'] = new_rating
+                    current_rating = new_rating
+                    change = cf.make_from_dict(cf.RatingChange, data)
+                    filtered_changes.append(change)
+                resp.append(filtered_changes)
+        else:
+            handles = []
+            account_id = cf_common.user_db.get_account_id(ctx.author.id, ctx.guild.id, resource)
+            if account_id!=None:
+                resp = [await clist.fetch_rating_changes([account_id])]
+                handles.append(ctx.author.display_name)
+            else:
+                    raise cf_common.HandleNotRegisteredError(ctx.author)
+
+        resp = [filt.filter_rating_changes(rating_changes) for rating_changes in resp]
+
+        def max_prefix(user):
+            max_rate = 0
+            res = []
+            for data in user:
+                old_rating = data.oldRating
+                if old_rating == 0:
+                    old_rating = 1500
+                if data.newRating - old_rating >= 0 and data.newRating >= max_rate:
+                    max_rate = data.newRating
+                    res.append(data)
+            return(res)
+
+        if peak:
+            resp = [max_prefix(user) for user in resp]
+
+        plt.clf()
+        plt.axes().set_prop_cycle(gc.rating_color_cycler)
+        _plot_rating(resp, resource=resource)
+        current_ratings = [rating_changes[-1].newRating if rating_changes else 'Unrated' for rating_changes in resp]
+        if resource!='codeforces.com':
+            handles = [rating_changes[-1].handle for rating_changes in resp]
+        labels = [gc.StrWrap(f'{handle} ({rating})') for handle, rating in zip(handles, current_ratings)]
+        plt.legend(labels, loc='upper left')
+
+        if not zoom:
+            min_rating = 1100
+            max_rating = 1800
+            for rating_changes in resp:
+                for rating in rating_changes:
+                    min_rating = min(min_rating, rating.newRating)
+                    max_rating = max(max_rating, rating.newRating)
+            plt.ylim(min_rating - 100, max_rating + 200)
+
+        discord_file = gc.get_current_figure_as_file()
+        embed = discord_common.cf_color_embed(title='Rating graph on '+resource)
+        discord_common.attach_image(embed, discord_file)
+        discord_common.set_author_footer(embed, ctx.author)
+        await ctx.send(embed=embed, file=discord_file)
 
     @plot.command(brief='Plot Codeforces rating graph', usage='[+zoom] [+peak] [handles...] [d>=[[dd]mm]yyyy] [d<[[dd]mm]yyyy]')
     async def rating(self, ctx, *args: str):
