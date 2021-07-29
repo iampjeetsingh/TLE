@@ -43,6 +43,7 @@ _PRETTY_HANDLES_PER_PAGE = 10
 _TOP_DELTAS_COUNT = 10
 _MAX_RATING_CHANGES_PER_EMBED = 15
 _UPDATE_HANDLE_STATUS_INTERVAL = 6 * 60 * 60  # 6 hours
+_UPDATE_CLIST_CACHE_INTERVAL = 3 * 60 * 60 # 3 hour
 
 _GITGUD_SCORE_DISTRIB = (2, 3, 5, 8, 12, 17, 23, 23, 23)
 _GITGUD_MAX_NEG_DELTA_VALUE = -300
@@ -331,10 +332,17 @@ class Handles(commands.Cog):
     async def on_ready(self):
         cf_common.event_sys.add_listener(self._on_rating_changes)
         self._set_ex_users_inactive_task.start()
+        self._update_clist_users_cache.start()
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):
         cf_common.user_db.set_inactive([(member.guild.id, member.id)])
+
+    @tasks.task_spec(name='RefreshClistUserCache',
+                     waiter=tasks.Waiter.fixed_delay(_UPDATE_CLIST_CACHE_INTERVAL))
+    async def _update_clist_users_cache(self, _):
+        for guild in self.bot.guilds:
+            await self._update_stars_all(guild)
 
     @commands.command(brief='update status, mark guild members as active')
     @commands.check_any(commands.has_role('Admin'), commands.is_owner())
