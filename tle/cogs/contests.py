@@ -270,12 +270,13 @@ class Contests(commands.Cog):
         for standings_chunk in standings_chunks:
             body = []
             for standing in standings_chunk:
-                score = int(standing['score']) if standing['score'] else 0
+                score = int(standing['score']) if standing['score'] else ' '
                 if show_rating_changes:
                     delta = int(standing['rating_change']) if standing['rating_change'] else ' '
                     if delta!=' ':
                         delta = '+'+str(delta) if delta>0 else str(delta)
-                    tokens = [int(standing['place']), standing['handle'], score, delta, standing['new_rating']]
+                    new_rating = standing['new_rating'] if standing['new_rating'] else ' '
+                    tokens = [int(standing['place']), standing['handle'], score, delta, new_rating]
                 else:
                     tokens = [int(standing['place']), standing['handle'], score]
                 body.append(tokens)
