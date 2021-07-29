@@ -113,7 +113,7 @@ _WEBSITE_ALLOWED_PATTERNS['atcoder.jp'] = [
 _WEBSITE_ALLOWED_PATTERNS['codingcompetitions.withgoogle.com'] = ['']
 _WEBSITE_ALLOWED_PATTERNS['facebook.com/hackercup'] = ['']
 _WEBSITE_ALLOWED_PATTERNS['leetcode.com'] = ['']
-_WEBSITE_ALLOWED_PATTERNS['codedrills.io'] = ['ICPC']
+_WEBSITE_ALLOWED_PATTERNS['codedrills.io'] = ['icpc']
 
 
 _WEBSITE_DISALLOWED_PATTERNS = defaultdict(list)
