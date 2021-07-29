@@ -226,10 +226,11 @@ class Reminders(commands.Cog):
 
     def get_guild_contests(self, contests, guild_id, resources=None):
         settings = cf_common.user_db.get_reminder_settings(guild_id)
-        _, _, _, _, website_allowed_patterns, website_disallowed_patterns = \
-            settings
-        website_allowed_patterns = json.loads(website_allowed_patterns)
-        website_disallowed_patterns = json.loads(website_disallowed_patterns)
+        if settings:
+            _, _, _, _, website_allowed_patterns, website_disallowed_patterns = \
+                settings
+        website_allowed_patterns = json.loads(website_allowed_patterns) if settings else _WEBSITE_ALLOWED_PATTERNS
+        website_disallowed_patterns = json.loads(website_disallowed_patterns) if settings else _WEBSITE_DISALLOWED_PATTERNS
         contests = [contest for contest in contests if contest.is_desired(
             website_allowed_patterns, website_disallowed_patterns, resources)]
         return contests
@@ -298,8 +299,9 @@ class Reminders(commands.Cog):
             await ctx.send(embed=discord_common.embed_neutral(empty_msg))
             return
         settings = cf_common.user_db.get_reminder_settings(ctx.guild.id)
+        zone = settings[3] if settings else 'Asia/Kolkata'
         pages = self._make_contest_pages(
-            contests, title, pytz.timezone(settings[3]))
+            contests, title, pytz.timezone(zone))
         paginator.paginate(
             self.bot,
             ctx.channel,
