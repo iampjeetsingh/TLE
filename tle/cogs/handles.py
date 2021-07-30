@@ -425,6 +425,7 @@ class Handles(commands.Cog):
         role_names_to_remove = {rank.title for rank in cf.RATED_RANKS}
         if role_to_assign is not None:
             role_names_to_remove.discard(role_to_assign.name)
+            role_names_to_remove.add('Unrated')
             if role_to_assign.name not in ['Newbie', 'Pupil', 'Specialist', 'Expert']:
                 role_names_to_remove.add('Purgatory')
         to_remove = [role for role in member.roles if role.name in role_names_to_remove]
