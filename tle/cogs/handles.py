@@ -52,10 +52,10 @@ _GITGUD_MAX_POS_DELTA_VALUE = 500
 _DIVISION_RATING_LOW  = (2100, 1600, -1000)
 _DIVISION_RATING_HIGH = (9999, 2099,  1599)
 _SUPPORTED_CLIST_RESOURCES = ('codechef.com', 'atcoder.jp',
- 'leetcode.com','codingcompetitions.withgoogle.com', 'facebook.com/hackercup')
+ 'leetcode.com','codingcompetitions.withgoogle.com', 'facebook.com/hackercup', 'codedrills.io')
 _CLIST_RESOURCE_SHORT_FORMS = {'cc':'codechef.com','codechef':'codechef.com', 'cf':'codeforces.com',
  'codeforces':'codeforces.com','ac':'atcoder.jp', 'atcoder':'atcoder.jp', 'lc':'leetcode.com', 
- 'leetcode':'leetcode.com', 'google':'codingcompetitions.withgoogle.com',
+ 'leetcode':'leetcode.com', 'google':'codingcompetitions.withgoogle.com', 'cd': 'codedrills.io', 'codedrills':'codedrills.io',
  'fb':'facebook.com/hackercup', 'facebook':'facebook.com/hackercup'}
 
 CODECHEF_RATED_RANKS = (
