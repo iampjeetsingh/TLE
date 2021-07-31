@@ -273,7 +273,7 @@ def _make_profile_embed(member, user, handles={}, *, mode):
     else:
         embed = discord.Embed(description="CodeForces handle is not set for this user")
     for key in handles:
-        if key=='codeforces.com': continue
+        if key=='codeforces.com' or key=='codedrills.io': continue
         title = key
         if key=="codingcompetitions.withgoogle.com": title = "google"
         embed.add_field(name=title, value=handles[key], inline=True)

@@ -465,9 +465,16 @@ class Contests(commands.Cog):
             account_ids= await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True, resource=contest['resource'])
             standings_to_show = []
             standings = await clist.statistics(contest_id=contest_id, account_ids=account_ids)
+            users = {account_id:user_id for user_id, account_id, handle in cf_common.user_db.get_account_ids_for_resource()}
             for standing in standings:
                 if not standing['place'] or not standing['handle']:
                     continue
+                if resource=='codedrills':
+                    if standing['account_id']:
+                        user_id = users[int(standing['account_id'])]
+                        member = ctx.guild.get_member(user_id)
+                        if member:
+                            standing['handle'] = member.display_name
                 standings_to_show.append(standing)
             standings_to_show.sort(key=lambda standing: int(standing['place']))
             if len(standings_to_show)==0:
