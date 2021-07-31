@@ -864,14 +864,16 @@ class Handles(commands.Cog):
             ids = []
             for user_id, account_id, handle in account_ids:
                 ids.append(account_id)
-                members[handle] = ctx.guild.get_member(user_id)
+                members[account_id] = ctx.guild.get_member(user_id)
             clist_users = await clist.fetch_user_info(resource, ids)
             users = []
             for clist_user in clist_users:
                 if clist_user['handle'] not in members: continue
                 handle = clist_user['handle']
+                if resource=='codedrills.io':
+                    handle = clist_user['name'] or ''
                 rating = int(clist_user['rating']) if clist_user['rating']!=None else None
-                member = members[handle]
+                member = members[int(clist_user['id'])]
                 n_contests = clist_user['n_contests']
                 users.append((member, handle, rating, n_contests))
         if not users:

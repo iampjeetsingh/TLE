@@ -462,6 +462,7 @@ class Contests(commands.Cog):
             if contest is None:
                 raise ContestCogError('Contest not found.') 
             contest_id = contest['id']
+            resource = contest['resource']
             account_ids= await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True, resource=contest['resource'])
             standings_to_show = []
             standings = await clist.statistics(contest_id=contest_id, account_ids=account_ids)
