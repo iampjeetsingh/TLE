@@ -868,7 +868,6 @@ class Handles(commands.Cog):
             clist_users = await clist.fetch_user_info(resource, ids)
             users = []
             for clist_user in clist_users:
-                if clist_user['handle'] not in members: continue
                 handle = clist_user['handle']
                 if resource=='codedrills.io':
                     handle = clist_user['name'] or ''
