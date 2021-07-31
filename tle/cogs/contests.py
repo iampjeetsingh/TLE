@@ -469,7 +469,7 @@ class Contests(commands.Cog):
             for standing in standings:
                 if not standing['place'] or not standing['handle']:
                     continue
-                if resource=='codedrills':
+                if resource=='codedrills.io':
                     if standing['account_id']:
                         user_id = users[int(standing['account_id'])]
                         member = ctx.guild.get_member(user_id)
