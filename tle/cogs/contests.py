@@ -465,7 +465,7 @@ class Contests(commands.Cog):
             account_ids= await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True, resource=contest['resource'])
             standings_to_show = []
             standings = await clist.statistics(contest_id=contest_id, account_ids=account_ids)
-            users = {account_id:user_id for user_id, account_id, handle in cf_common.user_db.get_account_ids_for_resource()}
+            users = {account_id:user_id for user_id, account_id, handle in cf_common.user_db.get_account_ids_for_resource(guild_id=ctx.guild.id, resource=resource)}
             for standing in standings:
                 if not standing['place'] or not standing['handle']:
                     continue
