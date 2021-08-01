@@ -464,11 +464,12 @@ class Contests(commands.Cog):
             contest_id = contest['id']
             resource = contest['resource']
             selected_divs = []
+            handles = list(handles)
             if resource=='codechef.com':
                 divs = {'+div1': 'div_1', '+div2': 'div_2', '+div3': 'div_3'}
                 for div in divs.keys():
                     if div in handles:
-                        handles.remove('+'+div)
+                        handles.remove(div)
                         selected_divs.append(divs[div])
             account_ids= await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True, resource=contest['resource'])
             users = {}
