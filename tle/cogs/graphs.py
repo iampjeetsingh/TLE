@@ -467,7 +467,7 @@ class Graphs(commands.Cog):
                 handles = []
                 account_id = cf_common.user_db.get_account_id(ctx.author.id, ctx.guild.id, resource)
                 if account_id!=None:
-                    resp = [await clist.fetch_rating_changes([account_id])]
+                    resp = [await clist.fetch_rating_changes([account_id],  resource=='atcoder.jp')]
                     handles.append(ctx.author.display_name)
                 else:
                     raise cf_common.HandleNotRegisteredError(ctx.author)

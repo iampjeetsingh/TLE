@@ -463,6 +463,13 @@ class Contests(commands.Cog):
                 raise ContestCogError('Contest not found.') 
             contest_id = contest['id']
             resource = contest['resource']
+            selected_divs = []
+            if resource=='codechef.com':
+                divs = {'+div1': 'div_1', '+div2': 'div_2', '+div3': 'div_3'}
+                for div in divs.keys():
+                    if div in handles:
+                        handles.remove('+'+div)
+                        selected_divs.append(divs[div])
             account_ids= await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True, resource=contest['resource'])
             users = {}
             if resource=='codedrills.io':
@@ -470,12 +477,16 @@ class Contests(commands.Cog):
                 for clist_user in clist_users:
                     users[clist_user['id']] = clist_user['name']
             standings_to_show = []
-            standings = await clist.statistics(contest_id=contest_id, account_ids=account_ids)
+            standings = await clist.statistics(contest_id=contest_id, account_ids=account_ids, with_extra_fields=resource=='codechef.com')
             for standing in standings:
                 if not standing['place'] or not standing['handle']:
                     continue
                 if resource=='codedrills.io':
                     standing['handle'] = users[standing['account_id']] or ''
+                elif resource=='codechef.com':
+                    if 'more_fields' in standing and 'division' in standing['more_fields']:
+                        if len(selected_divs)!=0 and standing['more_fields']['division'] not in selected_divs:
+                            continue
                 standings_to_show.append(standing)
             standings_to_show.sort(key=lambda standing: int(standing['place']))
             if len(standings_to_show)==0:
