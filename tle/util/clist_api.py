@@ -147,11 +147,13 @@ async def account(handle, resource):
         raise HandleNotFoundError(handle=handle, resource=resource) 
     return resp
 
-async def statistics(account_id=None, contest_id=None, order_by=None, account_ids=None, resource=None):
+async def statistics(account_id=None, contest_id=None, order_by=None, account_ids=None, resource=None, with_problems=False, with_extra_fields=False):
     params = {'limit':1000}
     if account_id!=None: params['account_id'] = account_id
     if contest_id!=None: params['contest_id'] = contest_id
     if order_by!=None: params['order_by'] = order_by
+    if with_problems: params['with_problems'] = True
+    if with_extra_fields: params['with_more_fields'] = True
     if account_ids!=None:
         ids = ""
         for i in range(len(account_ids)):
@@ -217,14 +219,20 @@ async def fetch_user_info(resource, account_ids=None, handles=None):
         resp = resp['objects']
     return resp
 
-async def fetch_rating_changes(account_ids=None):
-    resp = await statistics(account_ids=account_ids, order_by='date')
+async def fetch_rating_changes(account_ids=None, performance=False):
+    resp = await statistics(account_ids=account_ids, order_by='date', with_extra_fields=performance)
     result = []
     for changes in resp:
         time = dt.datetime.strptime(changes['date'],'%Y-%m-%dT%H:%M:%S')
         if changes['new_rating']==None: continue
         rating_change = changes['rating_change'] if changes['rating_change']!=None else 0
         old_rating = changes['old_rating'] if changes['old_rating']!=None else changes['new_rating']-rating_change
+        if performance:
+            if 'more_fields' not in changes or 'performance' not in changes['more_fields']:
+                old_rating = None
+            else:
+                old_rating = changes['more_fields']['performance']
+        if not old_rating: continue
         ratingchangedict = {
             'contestId':changes['contest_id'], 
             'contestName':changes['event'], 

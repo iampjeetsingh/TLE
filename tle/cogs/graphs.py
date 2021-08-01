@@ -455,7 +455,7 @@ class Graphs(commands.Cog):
                 handles = args
                 account_ids = await cf_common.resolve_handles(ctx, self.converter, handles, resource=resource)
                 data = dict()
-                for change in await clist.fetch_rating_changes(account_ids):
+                for change in await clist.fetch_rating_changes(account_ids, resource=='atcoder.jp'):
                     if change.handle in data:
                         data[change.handle].append(change)
                     else:
