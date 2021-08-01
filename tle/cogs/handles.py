@@ -342,7 +342,10 @@ class Handles(commands.Cog):
                      waiter=tasks.Waiter.fixed_delay(_UPDATE_CLIST_CACHE_INTERVAL))
     async def _update_clist_users_cache(self, _):
         for guild in self.bot.guilds:
-            await self._update_stars_all(guild)
+            try:
+                await self._update_stars_all(guild)
+            except:
+                pass
 
     @commands.command(brief='update status, mark guild members as active')
     @commands.check_any(commands.has_role('Admin'), commands.is_owner())
