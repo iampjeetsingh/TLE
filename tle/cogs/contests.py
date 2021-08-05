@@ -261,6 +261,8 @@ class Contests(commands.Cog):
                     if problem_key not in problems:
                         problems.append(problem_key)
         def maybe_int(value):
+            if '.' not in str(value):
+                return value
             try:
                 return int(value)
             except:
