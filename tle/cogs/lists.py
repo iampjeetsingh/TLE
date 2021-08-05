@@ -43,16 +43,19 @@ class HandleLists(commands.Cog):
         pass
 
     @commands.group(brief='Commands that have to do with lists', invoke_without_command=True, hidden=True)
-    @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
     async def list(self, ctx):
         """Change or create list of handles"""
         await ctx.send_help(ctx.command)
 
+
+    @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
     @list.command(brief='To create a handle list')    
     async def create(self, ctx, list_name):
         cf_common.user_db.create_list(ctx.guild.id, list_name)
         await ctx.send("```List created!!!```")
     
+
+    @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
     @list.command(brief='To delete a handle list')    
     async def delete(self, ctx, list_name):
         cf_common.user_db.delete_list(ctx.guild.id, list_name)
