@@ -1,7 +1,7 @@
 import logging
 import os
 import datetime as dt
-from tle.util.codeforces_api import RatingChange, make_from_dict
+from tle.util.codeforces_api import RatingChange, make_from_dict, Contest as CfContest
 import requests
 import json
 
@@ -179,6 +179,56 @@ async def statistics(account_id=None, contest_id=None, order_by=None, account_id
                 break
         offset+=1000
     return results
+
+class Contest(CfContest):
+    @property
+    def resource(self):
+        return self._resource
+
+    @resource.setter
+    def resource(self, value):
+        self._resource = value
+
+    @property
+    def url(self):
+        return self._url
+
+    @url.setter
+    def url(self, value):
+        self._url = value
+    
+    @property
+    def register_url(self):
+        return self._url
+
+def time_in_seconds(time_str):
+    time = dt.datetime.strptime(time_str,'%Y-%m-%dT%H:%M:%S')
+    return int((time-dt.datetime(1970,1,1)).total_seconds())
+
+def format_contest(contest):
+    start = time_in_seconds(contest['start'])
+    now = int(time.time())
+    duration = contest['duration']
+    phase = ''
+    if now<start:
+        phase = 'BEFORE'
+    elif now<start+duration:
+        phase = 'CODING'
+    else:
+        phase = 'FINISHED'
+    contest_dict = {
+        'id': contest['id'],
+        'name': contest['event'] ,
+        'startTimeSeconds': start ,
+        'durationSeconds': duration ,
+        'type': 'CLIST' ,
+        'phase': phase ,
+        'preparedBy': None
+    }
+    res = make_from_dict(Contest, contest_dict)
+    res.resource = contest['resource']
+    res.url = contest['href']
+    return res
 
 async def contest(contest_id):
     resp = await _query_clist_api('contest/'+str(contest_id), None)

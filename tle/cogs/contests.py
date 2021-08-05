@@ -251,34 +251,53 @@ class Contests(commands.Cog):
     def _make_clist_standings_pages(self, standings):
         if standings is None or len(standings)==0:
             return "```No handles found inside ranklist```"
-        show_rating_changes = standings[0]['rating_change']!=None
-
+        show_rating_changes = False
+        problems = []
+        for standing in standings:
+            if not show_rating_changes and standing['rating_change']!=None:
+                show_rating_changes = True
+            if 'problems' in standing:
+                for problem_key in standing['problems']:
+                    if problem_key not in problems:
+                        problems.append(problem_key)
+        def maybe_int(value):
+            try:
+                return int(value)
+            except:
+                return value
+        problems = sorted(problems)
+        show_rating_changes = any([standing['rating_change']!=None for standing in standings])
         pages = []
         standings_chunks = paginator.chunkify(standings, _STANDINGS_PER_PAGE)
         num_chunks = len(standings_chunks)
-
-        if not show_rating_changes:
-            header_style = '{:>} {:<}    {:^}  '
-            body_style   = '{:>} {:<}    {:<}  '
-            header = ['#', 'Name', 'Score']
-        else:
-            header_style = '{:>} {:<}    {:^}    {:<}    {:<}  '
-            body_style   = '{:>} {:<}    {:<}    {:<}    {:<}  '
-            header = ['#', 'Name', 'Score', 'Delta', 'New Rating']
+        problem_indices = [chr(ord('A')+i) for i in range(len(problems))]
+        header_style = '{:>} {:<}    {:^}  ' 
+        body_style = '{:>} {:<}    {:>}  '
+        header = ['#', 'Handle', '='] 
+        header_style += '  '.join(['{:^}'] * len(problem_indices))
+        body_style += '  '.join(['{:>}'] * len(problem_indices))
+        header += problem_indices
+        if show_rating_changes:
+            header_style += '  {:^}'
+            body_style += '  {:>}'
+            header += ['\N{INCREMENT}']
         
         num_pages = 1
         for standings_chunk in standings_chunks:
             body = []
             for standing in standings_chunk:
                 score = int(standing['score']) if standing['score'] else ' '
+                problem_results = [maybe_int(standing['problems'][problem_key]['result']) 
+                                            if standing.get('problems', None) and standing['problems'].get(problem_key, None) and 
+                                                    standing['problems'][problem_key].get('result', None) 
+                                                        else ' ' for problem_key in problems]
+                tokens = [int(standing['place']), standing['handle'], maybe_int(score)]
+                tokens += problem_results
                 if show_rating_changes:
                     delta = int(standing['rating_change']) if standing['rating_change'] else ' '
                     if delta!=' ':
                         delta = '+'+str(delta) if delta>0 else str(delta)
-                    new_rating = standing['new_rating'] if standing['new_rating'] else ' '
-                    tokens = [int(standing['place']), standing['handle'], score, delta, new_rating]
-                else:
-                    tokens = [int(standing['place']), standing['handle'], score]
+                    tokens += [delta]
                 body.append(tokens)
             t = table.Table(table.Style(header=header_style, body=body_style))
             t += table.Header(*header)
@@ -293,21 +312,15 @@ class Contests(commands.Cog):
             pages.append((content, None))
             num_pages += 1
         return pages
-    
-    @staticmethod
-    def _make_contest_embed_for_cranklist(contest):
-        embed = discord_common.cf_color_embed(title=contest['event'], url=contest['href'])
-        embed.add_field(name='Website', value=contest['resource'])
-        return embed
 
     @staticmethod
-    def _make_contest_embed_for_ranklist(ranklist):
-        contest = ranklist.contest
+    def _make_contest_embed_for_ranklist(ranklist=None, contest=None):
+        contest = ranklist.contest if ranklist else contest
         assert contest.phase != 'BEFORE', f'Contest {contest.id} has not started.'
         embed = discord_common.cf_color_embed(title=contest.name, url=contest.url)
         phase = contest.phase.capitalize().replace('_', ' ')
         embed.add_field(name='Phase', value=phase)
-        if ranklist.is_rated:
+        if ranklist and ranklist.is_rated:
             embed.add_field(name='Deltas', value=ranklist.deltas_status)
         now = time.time()
         en = '\N{EN SPACE}'
@@ -478,7 +491,7 @@ class Contests(commands.Cog):
                 for clist_user in clist_users:
                     users[clist_user['id']] = clist_user['name']
             standings_to_show = []
-            standings = await clist.statistics(contest_id=contest_id, account_ids=account_ids, with_extra_fields=resource=='codechef.com')
+            standings = await clist.statistics(contest_id=contest_id, account_ids=account_ids, with_extra_fields=True, with_problems=True)
             for standing in standings:
                 if not standing['place'] or not standing['handle']:
                     continue
@@ -494,7 +507,7 @@ class Contests(commands.Cog):
                 raise ContestCogError('Ranklist for this contest is not yet available, please come back later.') 
             pages = self._make_clist_standings_pages(standings_to_show)
             await wait_msg.delete()
-            await ctx.channel.send(embed=self._make_contest_embed_for_cranklist(contest))
+            await ctx.channel.send(embed=self._make_contest_embed_for_ranklist(contest=clist.format_contest(contest)))
             paginator.paginate(self.bot, ctx.channel, pages, wait_time=_STANDINGS_PAGINATE_WAIT_TIME)
         else:
             handles = await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True)
