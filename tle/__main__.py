@@ -39,8 +39,12 @@ def setup():
     
     # Update the user.db file from firebase
     if bucket!=None:
-        blob = bucket.blob('tle.db')
-        blob.download_to_filename(constants.USER_DB_FILE_PATH)
+        try:
+            blob = bucket.blob('tle.db')
+            blob.download_to_filename(constants.USER_DB_FILE_PATH)
+        except:
+            # File is not present in Firebase Storage
+            pass
 
     # logging to console and file on daily interval
     logging.basicConfig(format='{asctime}:{levelname}:{name}:{message}', style='{',
