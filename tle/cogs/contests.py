@@ -363,7 +363,7 @@ class Contests(commands.Cog):
     async def resolve_contest(self, contest_id, resource):
         contest = None
         if resource=='clist.by':
-            contest = await clist.contest(contest_id)
+            contest = await clist.contest(contest_id, with_problems=True)
         elif resource=='atcoder.jp':
             prefix = contest_id[:3]
             if prefix=='abc':
