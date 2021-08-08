@@ -50,15 +50,22 @@ class CallLimitExceededError(TrueApiError):
         self.comment = comment
 
 def ratelimit(f):
-    tries = 5
+    tries = 3
     @functools.wraps(f)
     async def wrapped(*args, **kwargs):
         for i in range(tries):
-            delay = 10
-            await asyncio.sleep(delay*i)
             try:
                 return await f(*args, **kwargs)
-            except (ClientError, CallLimitExceededError, ClistApiError) as e:
+            except (CallLimitExceededError) as e:
+                delay = 20
+                await asyncio.sleep(delay*(i+1))
+                logger.info(f'Try {i+1}/{tries} at query failed.')
+                if i < tries - 1:
+                    logger.info(f'Retrying...')
+                else:
+                    logger.info(f'Aborting.')
+                    raise e
+            except (ClientError, ClistApiError) as e:
                 logger.info(f'Try {i+1}/{tries} at query failed.')
                 if i < tries - 1:
                     logger.info(f'Retrying...')
@@ -230,11 +237,12 @@ def format_contest(contest):
     res.url = contest['href']
     return res
 
-async def contest(contest_id):
-    resp = await _query_clist_api('contest/'+str(contest_id), None)
+async def contest(contest_id, with_problems=False):
+    params = {'with_problems':True} if with_problems else None
+    resp = await _query_clist_api('contest/'+str(contest_id), params)
     return resp
 
-async def search_contest(regex=None, date_limits=None, resource=None):
+async def search_contest(regex=None, date_limits=None, resource=None, with_problems=False):
     params = {'limit':1000}
     if resource!=None:
         params['resource'] = resource
@@ -243,6 +251,8 @@ async def search_contest(regex=None, date_limits=None, resource=None):
     if date_limits!=None:
         params['start__gte'] = date_limits[0]
         params['start__lt'] = date_limits[1]
+    if with_problems:
+        params['with_problems'] = True
     resp = await _query_clist_api('contest', data=params)
     if resp==None or 'objects' not in resp:
         raise ClientError

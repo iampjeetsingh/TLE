@@ -248,15 +248,23 @@ class Contests(commands.Cog):
 
         return pages
     
-    def _make_clist_standings_pages(self, standings):
+    def _make_clist_standings_pages(self, standings, problemset=None, division=None):
         if standings is None or len(standings)==0:
             return "```No handles found inside ranklist```"
         show_rating_changes = False
         problems = []
+        if problemset:
+            if division!=None:
+                problemset = problemset['division'][division]
+            for problem in problemset:
+                if 'short' in problem:
+                    problems.append(problem['short'])
+                elif 'code' in problem:
+                    problems.append(problem['code'])
         for standing in standings:
             if not show_rating_changes and standing['rating_change']!=None:
                 show_rating_changes = True
-            if 'problems' in standing:
+            if problemset is None and 'problems' in standing:
                 for problem_key in standing['problems']:
                     if problem_key not in problems:
                         problems.append(problem_key)
@@ -267,7 +275,6 @@ class Contests(commands.Cog):
                 return int(value)
             except:
                 return value
-        problems = sorted(problems)
         show_rating_changes = any([standing['rating_change']!=None for standing in standings])
         pages = []
         standings_chunks = paginator.chunkify(standings, _STANDINGS_PER_PAGE)
@@ -371,7 +378,7 @@ class Contests(commands.Cog):
             except:
                 raise ContestCogError('Invalid contest_id provided.') 
             contest_name = prefix+str(suffix)
-            contests = await clist.search_contest(regex=contest_name, resource=resource)
+            contests = await clist.search_contest(regex=contest_name, resource=resource, with_problems=True)
             if contests==None or len(contests)==0:
                 raise ContestCogError('Contest not found.')
             contest = contests[0] 
@@ -389,7 +396,7 @@ class Contests(commands.Cog):
             elif 'starters' in contest_id:
                 date = parse_date(contest_id[8:])
                 contest_name = str(date.strftime('%B'))+' CodeChef Starters '+str(date.strftime('%Y'))
-            contests = await clist.search_contest(regex=contest_name, resource=resource)
+            contests = await clist.search_contest(regex=contest_name, resource=resource, with_problems=True)
             if contests==None or len(contests)==0:
                 raise ContestCogError('Contest not found.')
             contest = contests[0] 
@@ -420,7 +427,7 @@ class Contests(commands.Cog):
             start = dt.datetime(int('20'+str(year)), 1, 1)
             end = dt.datetime(int('20'+str(year+1)), 1, 1)
             date_limit = (start.strftime('%Y-%m-%dT%H:%M:%S'), end.strftime('%Y-%m-%dT%H:%M:%S'))
-            contests = await clist.search_contest(regex=contest_name, resource=resource, date_limits=date_limit)
+            contests = await clist.search_contest(regex=contest_name, resource=resource, date_limits=date_limit, with_problems=True)
             if contests==None or len(contests)==0:
                 raise ContestCogError('Contest not found.')
             contest = contests[0]
@@ -507,7 +514,7 @@ class Contests(commands.Cog):
             standings_to_show.sort(key=lambda standing: int(standing['place']))
             if len(standings_to_show)==0:
                 raise ContestCogError('Ranklist for this contest is not yet available, please come back later.') 
-            pages = self._make_clist_standings_pages(standings_to_show)
+            pages = self._make_clist_standings_pages(standings_to_show, problemset=contest.get('problems', None), division=selected_divs[0] if len(selected_divs)==1 else None)
             await wait_msg.delete()
             await ctx.channel.send(embed=self._make_contest_embed_for_ranklist(contest=clist.format_contest(contest)))
             paginator.paginate(self.bot, ctx.channel, pages, wait_time=_STANDINGS_PAGINATE_WAIT_TIME)
