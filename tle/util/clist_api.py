@@ -252,17 +252,21 @@ async def is_contest_parsed(contest_id):
     resp = await statistics(contest_id=contest_id, limit=10, order_by='place')
     return len(resp)!=0
 
-async def search_contest(regex=None, date_limits=None, resource=None, with_problems=False):
+async def search_contest(regex=None, date_limits=None, resource=None, with_problems=False, order_by=None):
     params = {'limit':1000}
     if resource!=None:
         params['resource'] = resource
     if regex!=None:
         params['event__regex'] = regex
     if date_limits!=None:
-        params['start__gte'] = date_limits[0]
-        params['start__lt'] = date_limits[1]
+        if date_limits[0]:
+            params['start__gte'] = date_limits[0]
+        if date_limits[1]:
+            params['start__lt'] = date_limits[1]
     if with_problems:
         params['with_problems'] = True
+    if order_by!=None: 
+        params['order_by'] = order_by
     resp = await _query_clist_api('contest', data=params)
     if resp==None or 'objects' not in resp:
         raise ClientError
