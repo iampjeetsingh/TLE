@@ -431,6 +431,12 @@ class Contests(commands.Cog):
             if contests==None or len(contests)==0:
                 raise ContestCogError('Contest not found.')
             contest = contests[0]
+        else:
+            contests = await clist.search_contest(regex=contest_id, with_problems=True)
+            if contests==None or len(contests)==0:
+                raise ContestCogError('Contest not found.')
+            contest = contests[0]
+            pass
         return contest
 
     @commands.command(brief='Show ranklist for given handles and/or server members')
@@ -478,7 +484,7 @@ class Contests(commands.Cog):
                     contest_id = -1*contest_id
                     resource = 'clist.by'
             except:
-                raise ContestCogError('Invalid contest_id provided.') 
+                resource = None
         if resource!='codeforces.com':
             contest = await self.resolve_contest(contest_id=contest_id, resource=resource)
             if contest is None:
