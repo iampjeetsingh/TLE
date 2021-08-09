@@ -501,7 +501,13 @@ class Contests(commands.Cog):
                     if div in handles:
                         handles.remove(div)
                         selected_divs.append(divs[div])
+            show_top_50 = False
+            if "+top" in handles:
+                show_top_50 = True
+                handles.remove("+top")
             account_ids= await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True, resource=contest['resource'])
+            if len(account_ids)==0 and show_top_50:
+                account_ids = None
             users = {}
             if resource=='codedrills.io':
                 clist_users = await clist.fetch_user_info(resource, account_ids)

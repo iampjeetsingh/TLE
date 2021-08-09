@@ -275,6 +275,8 @@ async def search_contest(regex=None, date_limits=None, resource=None, with_probl
     return resp
 
 async def fetch_user_info(resource, account_ids=None, handles=None):
+    if account_ids is None and handles is None:
+        return []
     params = {'resource':resource, 'limit':1000}
     if account_ids!=None:
         ids = ""
