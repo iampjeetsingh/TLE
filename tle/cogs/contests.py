@@ -432,8 +432,7 @@ class Contests(commands.Cog):
                 raise ContestCogError('Contest not found.')
             contest = contests[0]
         else:
-            date_limit = (None, dt.datetime().now().strftime('%Y-%m-%dT%H:%M:%S'))
-            contests = await clist.search_contest(regex=contest_id, with_problems=True, date_limits=date_limit, order_by='-start')
+            contests = await clist.search_contest(regex=contest_id, with_problems=True, order_by='-start')
             if contests==None or len(contests)==0:
                 raise ContestCogError('Contest not found.')
             contest = contests[0]
