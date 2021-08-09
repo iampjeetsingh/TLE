@@ -238,8 +238,10 @@ def format_contest(contest):
     return res
 
 async def contest(contest_id, with_problems=False):
-    params = {'with_problems':True} if with_problems else None
-    resp = await _query_clist_api('contest/'+str(contest_id), params)
+    params = {'id':contest_id}
+    if with_problems:
+        params['with_problems'] = True
+    resp = await _query_clist_api('contest', params)
     return resp
 
 async def is_contest_parsed(contest_id):
