@@ -442,29 +442,31 @@ class Contests(commands.Cog):
 
     @commands.command(brief='Show ranklist for given handles and/or server members')
     async def ranklist(self, ctx, contest_id: str, *handles: str):
-        """Shows ranklist for the contest with given contest id. If handles contains
+        """Shows ranklist for the contest with given contest id/name. If handles contains
         '+server', all server members are included. No handles defaults to '+server'.
-        
-        You can frame contest_id as follow
+
+        ;ranklist "Contest name here"
+        Note: Contest name doesn't work for CodeForces Contests
+
+        You can also frame contest_id as follow
         
         # For codeforces ranklist
         Enter codeforces contest id
 
         # For codechef ranklist
-        long<MMYYYY>
-        lunchtime<MMYYYY>
-        cookoff<MMYYYY>
-        starters<MMYYYY>
+        ;ranklist long<MMYYYY>
+        ;ranklist lunchtime<MMYYYY>
+        ;ranklist cookoff<MMYYYY>
+        ;ranklist starters<MMYYYY>
 
         # For atcoder ranklist
-        abc<Number> 
-        arc<Number> 
-        agc<Number>
+        ;ranklist abc213 
+        ;ranklist arc123
+        ;ranklist agc054
 
         # For google ranklist
         kickstart<YY><Round>
         codejam<YY><Round>
-
         Use QR for Qualification Round and WF for World Finals.
 
         # If nothing works
