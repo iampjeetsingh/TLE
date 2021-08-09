@@ -332,7 +332,7 @@ class Graphs(commands.Cog):
 
 
 
-    @plot.command(brief='Plot CodeChef rating graph excluding long challenges', usage='[+zoom] [+peak] [handles...] [d>=[[dd]mm]yyyy] [d<[[dd]mm]yyyy]')
+    @plot.command(brief='Plot CodeChef rating graph excluding long challenges', usage='[handles...] [+zoom] [+peak] [d>=[[dd]mm]yyyy] [d<[[dd]mm]yyyy]')
     async def nolongrating(self, ctx, *args: str):
         (zoom, peak), args = cf_common.filter_flags(args, ['+zoom' , '+peak'])
         filt = cf_common.SubFilter()
@@ -418,7 +418,7 @@ class Graphs(commands.Cog):
         discord_common.set_author_footer(embed, ctx.author)
         await ctx.send(embed=embed, file=discord_file)
 
-    @plot.command(brief='Plot Codeforces rating graph', usage='[+zoom] [+peak] [handles...] [d>=[[dd]mm]yyyy] [d<[[dd]mm]yyyy]')
+    @plot.command(brief='Plot Codeforces rating graph', usage='[codechef/atcoder] [handles...] [+zoom] [+peak] [d>=[[dd]mm]yyyy] [d<[[dd]mm]yyyy]')
     async def rating(self, ctx, *args: str):
         """Plots Codeforces rating graph for the handles provided."""
 
@@ -515,7 +515,7 @@ class Graphs(commands.Cog):
 
                     
 
-    @plot.command(brief='Plot Codeforces performance graph', usage='[+zoom] [handles...] [d>=[[dd]mm]yyyy] [d<[[dd]mm]yyyy]')
+    @plot.command(brief='Plot Codeforces performance graph', usage='[codechef/atcoder] [handles...] [+zoom] [d>=[[dd]mm]yyyy] [d<[[dd]mm]yyyy]')
     async def performance(self, ctx, *args: str):
         """Plots Codeforces performance graph for the handles provided."""
 

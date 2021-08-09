@@ -437,10 +437,20 @@ class Handles(commands.Cog):
         if role_to_assign is not None and role_to_assign not in member.roles:
             await member.add_roles(role_to_assign, reason=reason)
 
-    @handle.command(brief='Set Codeforces handle of a user')
+    @handle.command(brief='Set Codeforces handle of a user', usage="@member [website]:[handle]")
     @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
     async def set(self, ctx, member: discord.Member, handle: str):
-        """Set Codeforces handle of a user."""
+        """Set codeforces/codechef/atcoder/google handle of a user.
+
+        Some examples are given below
+        ;handle set @Benjamin Benq
+        ;handle set @Kamil cf:Errichto
+        ;handle set @Gennady codechef:gennady.korotkevich
+        ;handle set @Paramjeet cc:thesupremeone
+        ;handle set @Jatin atcoder:nagpaljatin1411
+        ;handle set @Alex ac:Um_nik
+        ;handle set @Priyansh google:Priyansh31dec
+        """
         embed = None
         resource = 'codeforces.com'
         if ':' in handle:
@@ -508,30 +518,21 @@ class Handles(commands.Cog):
         await self.update_member_rank_role(member, role_to_assign,
                                            reason='New handle set for user')
 
-    @handle.command(brief='Identify yourself', usage='[handle]')
+    @handle.command(brief='Identify yourself', usage='[[website]:[handle]]')
     @cf_common.user_guard(group='handle',
                           get_exception=lambda: HandleCogError('Identification is already running for you'))
     async def identify(self, ctx, handle: str):
-        """Link a codeforces/codechef/atcoder/leetcode account to discord account
+        """Link a codeforces/codechef/atcoder account to discord account
         
-        For linking codeforces
-        ;handle identify <your handle>
+        Some examples are given below
+        ;handle identify Benq
+        ;handle identify cf:Errichto
+        ;handle identify codechef:gennady.korotkevich
+        ;handle identify cc:thesupremeone
+        ;handle identify atcoder:nagpaljatin1411
+        ;handle identify ac:Um_nik
 
-        Now, You can also link the following websites to TLE
-        codechef.com (cc)
-        atcoder.jp (ac)
-        codingcompetitions.withgoogle.com (google)
-        leetcode.com (lc) 
-
-        To link codechef and atcoder you can use the notation below 
-        ;handle identify <website>:<your handle>
-        
-        For eg:- ;handle identify codechef.com:thesupremeone
-
-        You can also use shortform instead of full website name
-        ;handle identify ac:thesupremeone
-
-        For linking google and leetcode, please contact a moderator  
+        For linking google/codedrills/leetcode handles, please contact a moderator  
         """
         invoker = str(ctx.author)
         resource = 'codeforces.com'
@@ -842,7 +843,7 @@ class Handles(commands.Cog):
         discord_file = get_gudgitters_image(rankings)
         await ctx.send(file=discord_file)
 
-    @handle.command(brief="Show all handles")
+    @handle.command(brief="Show all handles", usage="[countries...] [website]")
     async def list(self, ctx, resource='codeforces.com'):
         """Shows members of the server who have registered their handles and
         their Codeforces ratings. You can additionally specify a list of countries
@@ -890,7 +891,7 @@ class Handles(commands.Cog):
         paginator.paginate(self.bot, ctx.channel, pages, wait_time=_PAGINATE_WAIT_TIME,
                            set_pagenum_footers=True)
 
-    @handle.command(brief="Show handles, but prettier")
+    @handle.command(brief="Show handles, but prettier", usage="[website] [page no]")
     async def pretty(self, ctx, arg1:str = None, arg2:str=None):
         """Show members of the server who have registered their handles and their Codeforces
         ratings, in color.
