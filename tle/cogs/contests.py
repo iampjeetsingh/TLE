@@ -439,38 +439,24 @@ class Contests(commands.Cog):
             pass
         return contest
 
-    @commands.command(brief='Show ranklist for given handles and/or server members')
+    @commands.command(brief='Show ranklist for given handles and/or server members',
+        usage='[contest_name_regex / contest_id / -clist_contest_id] [handles...] [+top] [+server] [+list_name]')
     async def ranklist(self, ctx, contest_id: str, *handles: str):
         """Shows ranklist for the contest with given contest id/name. If handles contains
         '+server', all server members are included. No handles defaults to '+server'.
-
-        ;ranklist "Contest name here"
-        Note: Contest name doesn't work for CodeForces Contests
-
-        You can also frame contest_id as follow
         
         # For codeforces ranklist
-        Enter codeforces contest id
+        ;ranklist codeforces_contest_id
 
         # For codechef ranklist
-        ;ranklist long<MMYYYY>
-        ;ranklist lunchtime<MMYYYY>
-        ;ranklist cookoff<MMYYYY>
-        ;ranklist starters<MMYYYY>
+        ;ranklist [long/lunchtime/cookoff][mm][yyyy]
 
         # For atcoder ranklist
-        ;ranklist abc213 
-        ;ranklist arc123
-        ;ranklist agc054
+        ;ranklist [abc/arc/agc][number]
 
         # For google ranklist
-        kickstart<YY><Round>
-        codejam<YY><Round>
+        ;ranklist [kickstart/codejam][yy][round]
         Use QR for Qualification Round and WF for World Finals.
-
-        # If nothing works
-        Use clist contest_id. You have to prefix - sign to clist contest-id otherwise it will be considered a codeforces contest id.
-        To know clist contest_id of a recent contest write ;clist finished or visit https://clist.by to get the id.
         """
         msg = "Generating ranklist, please wait..."
         wait_msg = await ctx.channel.send(msg)
@@ -505,9 +491,9 @@ class Contests(commands.Cog):
             if "+top" in handles:
                 show_top_50 = True
                 handles.remove("+top")
-            account_ids= await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True, resource=contest['resource'])
-            if len(account_ids)==0 and show_top_50:
                 account_ids = None
+            else:
+                account_ids= await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True, resource=contest['resource'])
             users = {}
             if resource=='codedrills.io':
                 clist_users = await clist.fetch_user_info(resource, account_ids)
