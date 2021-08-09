@@ -242,7 +242,11 @@ async def contest(contest_id, with_problems=False):
     if with_problems:
         params['with_problems'] = True
     resp = await _query_clist_api('contest', params)
-    return resp
+    if resp==None or 'objects' not in resp:
+        raise ClientError
+    else:
+        resp = resp['objects']
+    return resp[0]
 
 async def is_contest_parsed(contest_id):
     resp = await statistics(contest_id=contest_id, limit=10, order_by='place')
