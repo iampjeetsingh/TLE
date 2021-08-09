@@ -41,6 +41,9 @@ class RemindersCogError(commands.CommandError):
 
 def _contest_start_time_format(contest, tz):
     start = contest.start_time.replace(tzinfo=dt.timezone.utc).astimezone(tz)
+    tz = str(tz)
+    if tz=='Asia/Kolkata':
+        tz = 'IST'
     return f'{start.strftime("%d %b %y, %H:%M")} {tz}'
 
 

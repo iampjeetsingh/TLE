@@ -4,6 +4,7 @@ import json
 import logging
 import time
 import datetime as dt
+import pytz
 from collections import defaultdict, namedtuple
 from typing import List
 
@@ -66,6 +67,9 @@ class ContestCogError(commands.CommandError):
 
 def _contest_start_time_format(contest, tz):
     start = dt.datetime.fromtimestamp(contest.startTimeSeconds, tz)
+    tz = str(tz)
+    if tz=='Asia/Kolkata':
+        tz = 'IST'
     return f'{start.strftime("%d %b %y, %H:%M")} {tz}'
 
 
@@ -323,7 +327,7 @@ class Contests(commands.Cog):
         return pages
 
     @staticmethod
-    def _make_contest_embed_for_ranklist(ranklist=None, contest=None):
+    def _make_contest_embed_for_ranklist(ranklist=None, contest=None, timezone:pytz.timezone=cf_common.default_timezone):
         contest = ranklist.contest if ranklist else contest
         assert contest.phase != 'BEFORE', f'Contest {contest.id} has not started.'
         embed = discord_common.cf_color_embed(title=contest.name, url=contest.url)
@@ -339,7 +343,7 @@ class Contests(commands.Cog):
             msg = f'{elapsed} elapsed{en}|{en}{remaining} remaining'
             embed.add_field(name='Tick tock', value=msg, inline=False)
         else:
-            start = _contest_start_time_format(contest, dt.timezone.utc)
+            start = _contest_start_time_format(contest, timezone)
             duration = _contest_duration_format(contest)
             since = cf_common.pretty_time_format(now - contest.end_time, only_most_significant=True)
             msg = f'{start}{en}|{en}{duration}{en}|{en}Ended {since} ago'
@@ -461,6 +465,7 @@ class Contests(commands.Cog):
         msg = "Generating ranklist, please wait..."
         wait_msg = await ctx.channel.send(msg)
         resource = 'codeforces.com'
+        timezone = cf_common.get_guild_timezone(ctx.guild.id)
         for pattern in _PATTERNS:
             if pattern in contest_id:
                 resource = _PATTERNS[pattern]
@@ -520,7 +525,7 @@ class Contests(commands.Cog):
                     raise ContestCogError('Ranklist for this contest is being parsed, please come back later.') 
             pages = self._make_clist_standings_pages(standings_to_show, problemset=contest.get('problems', None), division=selected_divs[0] if len(selected_divs)==1 else None)
             await wait_msg.delete()
-            await ctx.channel.send(embed=self._make_contest_embed_for_ranklist(contest=clist.format_contest(contest)))
+            await ctx.channel.send(embed=self._make_contest_embed_for_ranklist(contest=clist.format_contest(contest), timezone=timezone))
             paginator.paginate(self.bot, ctx.channel, pages, wait_time=_STANDINGS_PAGINATE_WAIT_TIME)
         else:
             handles = await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True)
@@ -534,7 +539,7 @@ class Contests(commands.Cog):
                 ranklist = await cf_common.cache2.ranklist_cache.generate_ranklist(contest.id,
                                                                                 fetch_changes=True)
             await wait_msg.delete()
-            await ctx.channel.send(embed=self._make_contest_embed_for_ranklist(ranklist))
+            await ctx.channel.send(embed=self._make_contest_embed_for_ranklist(ranklist, timezone=timezone))
             await self._show_ranklist(channel=ctx.channel, contest_id=contest_id, handles=handles, ranklist=ranklist)
 
     async def _show_ranklist(self, channel, contest_id: int, handles: List[str], ranklist, vc: bool = False, delete_after: float = None):

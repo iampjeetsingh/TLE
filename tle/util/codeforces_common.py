@@ -6,6 +6,7 @@ import time
 import datetime
 from collections import defaultdict
 import itertools
+import pytz
 from discord.ext import commands
 import discord
 
@@ -32,6 +33,8 @@ _contest_id_to_writers_map = None
 _initialize_done = False
 
 active_groups = defaultdict(set)
+
+default_timezone = pytz.timezone('Asia/Kolkata')
 
 
 async def initialize(nodb):
@@ -216,6 +219,14 @@ def days_ago(t):
     if days < 2:
         return 'yesterday'
     return f'{math.floor(days)} days ago'
+
+def get_guild_timezone(guild_id):
+    settings = user_db.get_reminder_settings(guild_id)
+    timezone = default_timezone
+    if settings is not None:
+        _, _, _, localtimezone, _, _ = settings
+        timezone = pytz.timezone(localtimezone)
+    return timezone
 
 async def resolve_handles(ctx, converter, handles, *, mincnt=1, maxcnt=5, default_to_all_server=False, resource='codeforces.com'):
     """Convert an iterable of strings to CF handles. A string beginning with ! indicates Discord username,
