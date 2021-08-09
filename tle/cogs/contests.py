@@ -514,7 +514,7 @@ class Contests(commands.Cog):
                 for clist_user in clist_users:
                     users[clist_user['id']] = clist_user['name']
             standings_to_show = []
-            standings = await clist.statistics(contest_id=contest_id, account_ids=account_ids, with_extra_fields=True, with_problems=True)
+            standings = await clist.statistics(contest_id=contest_id, account_ids=account_ids, with_extra_fields=True, with_problems=True, order_by='place', limit=50 if show_top_50 else 1000)
             for standing in standings:
                 if not standing['place'] or not standing['handle']:
                     continue
