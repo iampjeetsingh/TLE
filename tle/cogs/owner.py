@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands
 
 from tle.util import codeforces_common as cf_common
+from tle.util import codeforces_api as cf
 from tle import constants
 from tle.util import discord_common
 from tle.cogs.handles import HandleCogError,_CLIST_RESOURCE_SHORT_FORMS,_SUPPORTED_CLIST_RESOURCES
@@ -57,6 +58,54 @@ class HandleLists(commands.Cog):
         await _create_roles(ctx, CODECHEF_RATED_RANKS)
         await wait_msg.delete()
         await ctx.send(embed=discord_common.embed_success('Roles created successfully.'))
+
+    @commands.group(brief='Commands related to daily practice problems', hidden=True, invoke_without_command=True)
+    async def dpp(self, ctx):
+        await ctx.send_help(ctx.command)
+
+    @dpp.command(brief='For uploading new practice problems', usage='<role> <date/description> [links...] [+rating]')
+    async def upload(self, ctx, role:discord.Role, day,*links):
+        links = list(links)
+        show_rating = '+rating' in links
+        if show_rating:
+            links.remove('+rating')
+        levels = []
+        level = []
+        for i,link in enumerate(links):
+            if i==len(links)-1:
+                level.append(link)
+                levels.append(level)
+            elif link=='|':
+                levels.append(level)
+                level = []
+            else:
+                level.append(link)
+        embed = discord_common.cf_color_embed(title='Daily Practice Problems', description=day)
+        for i, level in enumerate(levels):
+            text = ''
+            for link in level:
+                parts = link.split('/')
+                problem_index = parts[-1]
+                contest_id = parts[-3] if 'contest' in parts else parts[-2]
+                _, problems, _ = await cf.contest.standings(contest_id=contest_id,
+                                                                        show_unofficial=False)
+                problem = None
+                for prob in problems:
+                    if prob.index==problem_index:
+                        problem = prob
+                        break
+                if problem:
+                    rating = f' [{problem.rating}]' if show_rating else ''
+                    text += f'[{problem.name}]({problem.url}){rating}\n'
+            if len(levels)>1:
+                embed.add_field(name=f'Level {i+1}', value=text, inline=False)
+            else:
+                text = f'{day}\n\n{text}'
+                embed = discord_common.cf_color_embed(title='Daily Practice Problems', description=text)
+        embed.set_footer(text='All the best!!!')
+        message = f'{role.mention}'
+        await ctx.message.delete()
+        await ctx.send(message, embed=embed)
    
     @discord_common.send_error_if(HandleCogError, cf_common.HandleIsVjudgeError)
     async def cog_command_error(self, ctx, error):
