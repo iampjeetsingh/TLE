@@ -60,6 +60,7 @@ class HandleLists(commands.Cog):
         await ctx.send(embed=discord_common.embed_success('Roles created successfully.'))
 
     @commands.group(brief='Commands related to daily practice problems', hidden=True, invoke_without_command=True)
+    @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
     async def dpp(self, ctx):
         await ctx.send_help(ctx.command)
 
