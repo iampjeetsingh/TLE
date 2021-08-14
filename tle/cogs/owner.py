@@ -84,20 +84,23 @@ class HandleLists(commands.Cog):
         embed = discord_common.cf_color_embed(title='Daily Practice Problems', description=day)
         for i, level in enumerate(levels):
             text = ''
-            for link in level:
+            for j, link in enumerate(level):
                 parts = link.split('/')
-                problem_index = parts[-1]
-                contest_id = parts[-3] if 'contest' in parts else parts[-2]
-                _, problems, _ = await cf.contest.standings(contest_id=contest_id,
-                                                                        show_unofficial=False)
-                problem = None
-                for prob in problems:
-                    if prob.index==problem_index:
-                        problem = prob
-                        break
-                if problem:
-                    rating = f' [{problem.rating}]' if show_rating else ''
-                    text += f'[{problem.name}]({problem.url}){rating}\n'
+                if 'codeforces' in parts:
+                    problem_index = parts[-1]
+                    contest_id = parts[-3] if 'contest' in parts else parts[-2]
+                    _, problems, _ = await cf.contest.standings(contest_id=contest_id,
+                                                                            show_unofficial=False)
+                    problem = None
+                    for prob in problems:
+                        if prob.index==problem_index:
+                            problem = prob
+                            break
+                    if problem:
+                        rating = f' [{problem.rating}]' if show_rating else ''
+                        text += f'[{problem.name}]({problem.url}){rating}\n'
+                else:
+                    text += f'[Problem {j+1}]({link})\n'
             if len(levels)>1:
                 embed.add_field(name=f'Level {i+1}', value=text, inline=False)
             else:
