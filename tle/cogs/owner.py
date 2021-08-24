@@ -85,8 +85,12 @@ class HandleLists(commands.Cog):
         for i, level in enumerate(levels):
             text = ''
             for j, link in enumerate(level):
+                skip = False
+                if link[0]=='?':
+                    skip = True
+                    link = link[1:]
                 parts = link.split('/')
-                if 'codeforces.com' in parts:
+                if 'codeforces.com' in parts and not skip:
                     problem_index = parts[-1]
                     contest_id = parts[-3] if 'contest' in parts else parts[-2]
                     _, problems, _ = await cf.contest.standings(contest_id=contest_id,
