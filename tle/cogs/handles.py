@@ -873,7 +873,7 @@ class Handles(commands.Cog):
             users = []
             for clist_user in clist_users:
                 handle = clist_user['handle']
-                if resource=='codedrills.io':
+                if resource in ['codedrills.io', 'facebook.com/hackercup']:
                     handle = clist_user['name'] or ' '
                 rating = int(clist_user['rating']) if clist_user['rating']!=None else None
                 member = members[int(clist_user['id'])]

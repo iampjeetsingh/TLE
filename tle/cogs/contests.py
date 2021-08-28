@@ -511,6 +511,10 @@ class Contests(commands.Cog):
                     continue
                 if resource=='codedrills.io':
                     standing['handle'] = users[standing['account_id']] or ''
+                elif resource=='facebook.com/hackercup':
+                    more_fields = standing.get('more_fields')
+                    if more_fields:
+                        standing['handle'] = more_fields['name'];
                 elif resource=='codechef.com':
                     if 'more_fields' in standing and 'division' in standing['more_fields']:
                         if len(selected_divs)!=0 and standing['more_fields']['division'] not in selected_divs:
