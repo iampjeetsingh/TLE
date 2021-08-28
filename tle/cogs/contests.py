@@ -44,7 +44,8 @@ _PATTERNS = {
     'lunchtime': 'codechef.com',
     'long': 'codechef.com',
     'cookoff': 'codechef.com',
-    'starters': 'codechef.com'
+    'starters': 'codechef.com',
+    'hackercup': 'facebook.com/hackercup'
 }
 
 def parse_date(arg):
@@ -404,7 +405,7 @@ class Contests(commands.Cog):
             if contests==None or len(contests)==0:
                 raise ContestCogError('Contest not found.')
             contest = contests[0] 
-        elif resource=='codingcompetitions.withgoogle.com':
+        elif resource=='codingcompetitions.withgoogle.com' or resource=='facebook.com/hackercup':
             year,round = None,None
             contest_name = None
             if 'kickstart' in contest_id:
@@ -422,6 +423,18 @@ class Contests(commands.Cog):
                     contest_name = 'Code Jam.*Qualification Round'
                 else:
                     contest_name = 'Code Jam.*Round '+round
+            elif 'hackercup' in contest_id:
+                year = contest_id[9:11]
+                round = contest_id[11:]
+                if round=='WF':
+                    round = 'Finals'
+                    contest_name = 'Final Round '
+                elif round=='QR':
+                    round = 'Qualification Round'
+                    contest_name = 'Qualification Round '
+                else:
+                    contest_name = 'Round '+round
+
             if not round:
                     raise ContestCogError('Invalid contest_id provided.') 
             try:

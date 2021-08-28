@@ -8,7 +8,7 @@ from tle.util import table
 from tle.util import clist_api as clist
 from tle import constants
 from tle.util import discord_common
-from tle.cogs.handles import HandleCogError,_CLIST_RESOURCE_SHORT_FORMS, _HANDLES_PER_PAGE, _PAGINATE_WAIT_TIME,_SUPPORTED_CLIST_RESOURCES
+from tle.cogs.handles import HandleCogError,_CLIST_RESOURCE_SHORT_FORMS, _HANDLES_PER_PAGE, _PAGINATE_WAIT_TIME,_SUPPORTED_CLIST_RESOURCES, resource_name
 from discord.ext import commands
 
 def _make_pages(users, title, resource='codeforces.com'):
@@ -120,7 +120,7 @@ class HandleLists(commands.Cog):
             raise HandleCogError('No handles present in list.')
 
         users.sort(key=lambda x: (1 if x[1] is None else -x[1], -x[2],x[0]))  # Sorting by (-rating,-contests, handle)
-        title = 'Handles of list '+list_name+' ('+resource+')'
+        title = f'Handles of list {list_name} ({resource_name(resource)})'
         pages = _make_pages(users, title, resource)
         await wait_msg.delete()
         paginator.paginate(self.bot, ctx.channel, pages, wait_time=_PAGINATE_WAIT_TIME,
