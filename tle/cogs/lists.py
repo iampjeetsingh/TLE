@@ -111,7 +111,7 @@ class HandleLists(commands.Cog):
             clist_users = await clist.fetch_user_info(resource, ids)
             for clist_user in clist_users:
                 handle = clist_user['handle']
-                if resource=='codedrills.io':
+                if resource in ['codedrills.io', 'facebook.com/hackercup']:
                     handle = clist_user['name'] or ' '
                 rating = int(clist_user['rating']) if clist_user['rating']!=None else None
                 n_contests = clist_user['n_contests']
