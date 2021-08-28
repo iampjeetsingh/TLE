@@ -258,13 +258,20 @@ class Contests(commands.Cog):
             return "```No handles found inside ranklist```"
         show_rating_changes = False
         problems = []
+        problem_indices = []
         if problemset:
             if division!=None:
                 problemset = problemset['division'][division]
             for problem in problemset:
                 if 'short' in problem:
-                    problems.append(problem['short'])
+                    short = problem['short']
+                    if len(short)>3:
+                        problem_indices = None
+                    if problem_indices:
+                        problem_indices.append(short)
+                    problems.append(short)
                 elif 'code' in problem:
+                    problem_indices = None
                     problems.append(problem['code'])
         for standing in standings:
             if not show_rating_changes and standing['rating_change']!=None:
@@ -284,7 +291,7 @@ class Contests(commands.Cog):
         pages = []
         standings_chunks = paginator.chunkify(standings, _STANDINGS_PER_PAGE)
         num_chunks = len(standings_chunks)
-        problem_indices = [chr(ord('A')+i) for i in range(len(problems))]
+        problem_indices = problem_indices or [chr(ord('A')+i) for i in range(len(problems))]
         header_style = '{:>} {:<}    {:^}  ' 
         body_style = '{:>} {:<}    {:>}  '
         header = ['#', 'Handle', '='] 
