@@ -58,6 +58,15 @@ _CLIST_RESOURCE_SHORT_FORMS = {'cc':'codechef.com','codechef':'codechef.com', 'c
  'leetcode':'leetcode.com', 'google':'codingcompetitions.withgoogle.com', 'cd': 'codedrills.io', 'codedrills':'codedrills.io',
  'fb':'facebook.com/hackercup', 'facebook':'facebook.com/hackercup'}
 
+_RESOURCE_NAMES = {
+    'codechef.com': 'CodeChef', 
+    'atcoder.jp': 'AtCoder',
+    'leetcode.com': 'LeetCode',
+    'codingcompetitions.withgoogle.com': 'Google', 
+    'facebook.com/hackercup': 'Facebook', 
+    'codedrills.io': 'CodeDrills'
+}
+
 CODECHEF_RATED_RANKS = (
     Rank(-10 ** 9, 1400, '1 Star', '1★', '#DADADA', 0x666666),
     Rank(1400, 1600, '2 Star', '2★', '#C9E0CA', 0x1e7d22),
@@ -116,6 +125,13 @@ def rating2acrank(rating):
 def randomword(length):
    letters = string.ascii_lowercase
    return ''.join(random.choice(letters) for i in range(length))
+
+def resource_name(resource):
+    if resource is None:
+        return ''
+    if resource in _RESOURCE_NAMES:
+        return _RESOURCE_NAMES[resource]
+    return resource
 
 FONTS = [
     'Noto Sans',
@@ -273,9 +289,8 @@ def _make_profile_embed(member, user, handles={}, *, mode):
     else:
         embed = discord.Embed(description="CodeForces handle is not set for this user")
     for key in handles:
-        if key=='codeforces.com' or key=='codedrills.io': continue
-        title = key
-        if key=="codingcompetitions.withgoogle.com": title = "google"
+        if key in ['codeforces.com', 'codedrills.io', 'facebook.com/hackercup']: continue
+        title = resource_name(key)
         embed.add_field(name=title, value=handles[key], inline=True)
     if user:
         embed.set_thumbnail(url=f'{user.titlePhoto}')
@@ -883,7 +898,7 @@ class Handles(commands.Cog):
             raise HandleCogError('No members with registered handles.')
 
         users.sort(key=lambda x: (1 if x[2] is None else -x[2], -x[3],x[1]))  # Sorting by (-rating,-contests, handle)
-        title = 'Handles of server members '+(('('+resource+')') if resource!=None else '')
+        title = f'Handles of server members ({resource_name(resource)})'
         if countries:
             title += ' from ' + ', '.join(f'`{country}`' for country in countries)
         pages = _make_pages(users, title, resource)
