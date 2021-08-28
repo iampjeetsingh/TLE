@@ -471,8 +471,8 @@ class Contests(commands.Cog):
         # For atcoder ranklist
         ;ranklist [abc/arc/agc][number]
 
-        # For google ranklist
-        ;ranklist [kickstart/codejam][yy][round]
+        # For google and facebook ranklist
+        ;ranklist [kickstart/codejam/hackercup][yy][round]
         Use QR for Qualification Round and WF for World Finals.
         """
         msg = "Generating ranklist, please wait..."
