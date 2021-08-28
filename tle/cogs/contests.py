@@ -267,7 +267,7 @@ class Contests(commands.Cog):
                     short = problem['short']
                     if len(short)>3:
                         problem_indices = None
-                    if problem_indices:
+                    if problem_indices!=None:
                         problem_indices.append(short)
                     problems.append(short)
                 elif 'code' in problem:
