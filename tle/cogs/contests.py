@@ -527,7 +527,10 @@ class Contests(commands.Cog):
                 elif resource=='facebook.com/hackercup':
                     more_fields = standing.get('more_fields')
                     if more_fields:
-                        standing['handle'] = more_fields['name'];
+                        name = more_fields['name']
+                        if '(' in name and ')' in name:
+                            name = name[:name.index('(')]
+                        standing['handle'] = name;
                 elif resource=='codechef.com':
                     if 'more_fields' in standing and 'division' in standing['more_fields']:
                         if len(selected_divs)!=0 and standing['more_fields']['division'] not in selected_divs:

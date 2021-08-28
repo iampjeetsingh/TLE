@@ -112,7 +112,10 @@ class HandleLists(commands.Cog):
             for clist_user in clist_users:
                 handle = clist_user['handle']
                 if resource in ['codedrills.io', 'facebook.com/hackercup']:
-                    handle = clist_user['name'] or ' '
+                    name = clist_user['name']
+                    if '(' in name and ')' in name:
+                        name = name[:name.index('(')]
+                    handle = name or ' '
                 rating = int(clist_user['rating']) if clist_user['rating']!=None else None
                 n_contests = clist_user['n_contests']
                 users.append((handle, rating, n_contests))
