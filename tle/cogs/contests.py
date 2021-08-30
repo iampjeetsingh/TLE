@@ -335,7 +335,7 @@ class Contests(commands.Cog):
         return pages
 
     @staticmethod
-    def _make_contest_embed_for_ranklist(ranklist=None, contest=None, timezone:pytz.timezone=cf_common.default_timezone):
+    def _make_contest_embed_for_ranklist(ranklist=None, contest=None, timezone:pytz.timezone=cf_common.default_timezone, parsed_at=None):
         contest = ranklist.contest if ranklist else contest
         assert contest.phase != 'BEFORE', f'Contest {contest.id} has not started.'
         embed = discord_common.cf_color_embed(title=contest.name, url=contest.url)
@@ -356,6 +356,10 @@ class Contests(commands.Cog):
             since = cf_common.pretty_time_format(now - contest.end_time, only_most_significant=True)
             msg = f'{start}{en}|{en}{duration}{en}|{en}Ended {since} ago'
             embed.add_field(name='When', value=msg, inline=False)
+        if parsed_at:
+            since = cf_common.pretty_time_format(now - clist.time_in_seconds(parsed_at), only_most_significant=True)
+            embed.add_field(name='Updated', value=f'{since} ago')
+        
         return embed
 
     @staticmethod
@@ -504,6 +508,7 @@ class Contests(commands.Cog):
                 raise ContestCogError('Contest not found.') 
             contest_id = contest['id']
             resource = contest['resource']
+            parsed_at = contest.get('parsed_at', None);
             selected_divs = []
             handles = list(handles)
             if resource=='codechef.com':
@@ -545,14 +550,16 @@ class Contests(commands.Cog):
                 standings_to_show.append(standing)
             standings_to_show.sort(key=lambda standing: int(standing['place']))
             if len(standings_to_show)==0:
-                if await clist.is_contest_parsed(contest_id):
+                if parsed_at:
                     name = contest['event']
                     raise ContestCogError(f'None of the handles are present in the ranklist of `{name}`') 
                 else:
                     raise ContestCogError('Ranklist for this contest is being parsed, please come back later.') 
-            pages = self._make_clist_standings_pages(standings_to_show, problemset=contest.get('problems', None), division=selected_divs[0] if len(selected_divs)==1 else None)
+            division = selected_divs[0] if len(selected_divs)==1 else None
+            problemset = contest.get('problems', None);
+            pages = self._make_clist_standings_pages(standings_to_show, problemset=problemset, division=division)
             await wait_msg.delete()
-            await ctx.channel.send(embed=self._make_contest_embed_for_ranklist(contest=clist.format_contest(contest), timezone=timezone))
+            await ctx.channel.send(embed=self._make_contest_embed_for_ranklist(contest=clist.format_contest(contest), timezone=timezone, parsed_at=parsed_at))
             paginator.paginate(self.bot, ctx.channel, pages, wait_time=_STANDINGS_PAGINATE_WAIT_TIME)
         else:
             handles = await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True)
