@@ -116,6 +116,3 @@ pip-wheel-metadata/
 
 # logs
 /logs
-
-# firebase-admin-sdk-key
-firebase-admin.json
