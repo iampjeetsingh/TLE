@@ -69,8 +69,6 @@ class ContestCogError(commands.CommandError):
 def _contest_start_time_format(contest, tz):
     start = dt.datetime.fromtimestamp(contest.startTimeSeconds, tz)
     tz = str(tz)
-    if tz=='Asia/Kolkata':
-        tz = 'IST'
     return f'{start.strftime("%d %b %y, %H:%M")} {tz}'
 
 
