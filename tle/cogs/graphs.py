@@ -984,6 +984,7 @@ class Graphs(commands.Cog):
         ratings = cf_common.cache2.rating_changes_cache.get_all_ratings()
         ratings = np.array(sorted(ratings))
         n = len(ratings)
+        
         perc = 100*np.arange(n)/n
 
         users_to_mark = {}
