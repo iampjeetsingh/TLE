@@ -5,7 +5,7 @@ TLE is a Discord bot centered around Competitive Programming.
 # Hosting Guide
 ## Creating A Discord Bot
 1. Follow this [guide](https://www.freecodecamp.org/news/create-a-discord-bot-with-javascript-nodejs/) to create a new discord bot account and invite that to your server.
-2. For the simplicty give it Admin Perms and Move the Role to top.
+2. To keep things simple and easy give it Admin Perms and Move the Role to top.
 
 ## Creating A Firebase Storage Bucket for Database Backups
 1. Navigate to [Firebase Web Console](https://console.firebase.google.com/)
