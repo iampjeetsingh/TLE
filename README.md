@@ -20,13 +20,14 @@ TLE is a Discord bot centered around Competitive Programming.
 
 ## Creating A Heroku App
 1. Fork [Repo](https://github.com/Better-CF/TLE)
-2. Connect Github with Heroku and Deploy app
-3. Head Over to Settings and Fill in the following Variables
-4. Paste your discord bot token in "BOT_TOKEN"
-5. Paste your clist api param query (username=iwant&api_key=e4c97d624a7b963322ef90e651a5d21f000ac509) in "CLIST_API_TOKEN" 
-6. Encode the contents of Firebase JSON file in [base64](https://www.base64encode.org/) and Paste encoded string in "FIREBASE_ADMIN_JSON"
-7. Paste ID of a Discord Channel where you will want the bot to log in "LOGGING_COG_CHANNEL_ID"
-8. Paste in Storage Bucket URL in "STORAGE_BUCKET"
-9. Set "ALLOW_DUEL_SELF_REGISTER" to true/false
-10. Set "TLE_MODERATOR" to Moderator or any Role Name
-11. Navigate to Resources and turn on the Dyno
+2. Change heroku stack to container [link](https://stackoverflow.com/questions/59725708/set-the-stack-for-an-existing-heroku-app-from-heroku-18-to-container-for-a-doc)
+3. Connect Github with Heroku and Deploy app
+4. Head Over to Settings and Fill in the following Variables
+5. Paste your discord bot token in "BOT_TOKEN"
+6. Paste your clist api param query (username=iwant&api_key=e4c97d624a7b963322ef90e651a5d21f000ac509) in "CLIST_API_TOKEN" 
+7. Encode the contents of Firebase JSON file in [base64](https://www.base64encode.org/) and Paste encoded string in "FIREBASE_ADMIN_JSON"
+8. Paste ID of a Discord Channel where you will want the bot to log in "LOGGING_COG_CHANNEL_ID"
+9. Paste in Storage Bucket URL in "STORAGE_BUCKET"
+10. Set "ALLOW_DUEL_SELF_REGISTER" to true/false
+11. Set "TLE_MODERATOR" to Moderator or any Role Name
+12. Navigate to Resources and turn on the Dyno
