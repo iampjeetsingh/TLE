@@ -31,8 +31,7 @@ _CONTEST_PAGINATE_WAIT_TIME = 5 * 60
 _FINISHED_CONTESTS_LIMIT = 10
 _CONTEST_REFRESH_PERIOD = 10 * 60  # seconds
 
-_PYTZ_TIMEZONES_GIST_URL = ('https://gist.github.com/heyalexej/'
-                            '8bf688fd67d7199be4a1682b3eec7568')
+_PYTZ_TIMEZONES_GIST_URL = ('https://gist.github.com/heyalexej/' '8bf688fd67d7199be4a1682b3eec7568')
 
 
 class RemindersCogError(commands.CommandError):
@@ -54,11 +53,7 @@ def _contest_duration_format(contest):
     return duration
 
 
-def _get_formatted_contest_desc(
-        start,
-        duration,
-        url,
-        max_duration_len):
+def _get_formatted_contest_desc(start, duration, url, max_duration_len):
     em = '\N{EN SPACE}'
     sq = '\N{WHITE SQUARE WITH UPPER RIGHT QUADRANT}'
     desc = (f'`{em}{start}{em}|'
@@ -67,24 +62,45 @@ def _get_formatted_contest_desc(
     return desc
 
 
+def _contest_website(contest):
+    website = "Not Found"
+    url = str(contest.url)
+    if url.find("codeforces") != -1:
+        website = "CodeForces"
+    elif url.find("codechef") != -1:
+        website = "CodeChef"
+    elif url.find("atcoder") != -1:
+        website = "AtCoder"
+    elif url.find("google") != -1:
+        website = "Google"
+    elif url.find("hackercup") != -1:
+        website = "FaceBook"
+    elif url.find("leetcode") != -1:
+        website = "LeetCode"
+    elif url.find("codedrills") != -1:
+        website = "CodeDrills"
+    elif url.find("usaco") != -1:
+        website = "USACO"
+    return website
+
+
 def _get_embed_fields_from_contests(contests, localtimezone):
     infos = [(contest.name,
-              _contest_start_time_format(contest,
-                                         localtimezone),
+              _contest_start_time_format(contest, localtimezone),
+              _contest_website(contest),
               _contest_duration_format(contest),
               contest.url) for contest in contests]
-    max_duration_len = max(len(duration) for _, _, duration, _ in infos)
+    max_duration_len = max(len(duration) for _, _, _, duration, _ in infos)
 
     fields = []
-    for name, start, duration, url in infos:
-        value = _get_formatted_contest_desc(
-            start, duration, url, max_duration_len)
-        fields.append((name, value))
+    for name, start, website, duration, url in infos:
+        value = _get_formatted_contest_desc(start, duration, url, max_duration_len)
+        fields.append((name, value, website))
+
     return fields
 
 
-async def _send_reminder_at(channel, role, contests, before_secs, send_time,
-                            localtimezone: pytz.timezone):
+async def _send_reminder_at(channel, role, contests, before_secs, send_time, localtimezone: pytz.timezone):
     delay = send_time - dt.datetime.utcnow().timestamp()
     if delay <= 0:
         return
@@ -100,33 +116,31 @@ async def _send_reminder_at(channel, role, contests, before_secs, send_time,
                           for label, value in zip(labels, values) if value > 0)
     desc = f'About to start in {before_str}'
     embed = discord_common.color_embed(description=desc)
-    for name, value in _get_embed_fields_from_contests(
+    for name, value, website in _get_embed_fields_from_contests(
             contests, localtimezone):
-        embed.add_field(name=name, value=value)
+        embed.add_field(name=(website + " || " + name), value=value)
     await channel.send(role.mention, embed=embed)
+
 
 _WEBSITE_ALLOWED_PATTERNS = defaultdict(list)
 _WEBSITE_ALLOWED_PATTERNS['codeforces.com'] = ['']
-_WEBSITE_ALLOWED_PATTERNS['codechef.com'] = [
-    'lunch', 'cook', 'rated']
-_WEBSITE_ALLOWED_PATTERNS['atcoder.jp'] = [
-    'abc:', 'arc:', 'agc:', 'grand', 'beginner', 'regular']
+_WEBSITE_ALLOWED_PATTERNS['codechef.com'] = ['lunch', 'cook', 'rated']
+_WEBSITE_ALLOWED_PATTERNS['atcoder.jp'] = ['abc:', 'arc:', 'agc:', 'grand', 'beginner', 'regular']
 _WEBSITE_ALLOWED_PATTERNS['codingcompetitions.withgoogle.com'] = ['']
 _WEBSITE_ALLOWED_PATTERNS['facebook.com/hackercup'] = ['']
 _WEBSITE_ALLOWED_PATTERNS['leetcode.com'] = ['']
 _WEBSITE_ALLOWED_PATTERNS['codedrills.io'] = ['icpc']
-
+_WEBSITE_ALLOWED_PATTERNS['usaco.org'] = ['']
 
 _WEBSITE_DISALLOWED_PATTERNS = defaultdict(list)
-_WEBSITE_DISALLOWED_PATTERNS['codeforces.com'] = [
-    'wild', 'fools', 'kotlin', 'unrated']
-_WEBSITE_DISALLOWED_PATTERNS['codechef.com'] = ['unrated']
+_WEBSITE_DISALLOWED_PATTERNS['codeforces.com'] = ['wild', 'fools', 'kotlin', 'unrated']
+_WEBSITE_DISALLOWED_PATTERNS['codechef.com'] = ['unrated', 'Long']
 _WEBSITE_DISALLOWED_PATTERNS['atcoder.jp'] = []
-_WEBSITE_DISALLOWED_PATTERNS['codingcompetitions.withgoogle.com'] = [
-    'registration']
+_WEBSITE_DISALLOWED_PATTERNS['codingcompetitions.withgoogle.com'] = ['registration']
 _WEBSITE_DISALLOWED_PATTERNS['facebook.com/hackercup'] = []
 _WEBSITE_DISALLOWED_PATTERNS['leetcode.com'] = []
 _WEBSITE_DISALLOWED_PATTERNS['codedrills.io'] = []
+_WEBSITE_DISALLOWED_PATTERNS['usaco.org'] = []
 
 _SUPPORTED_WEBSITES = [
     'codeforces.com',
@@ -136,6 +150,7 @@ _SUPPORTED_WEBSITES = [
     'facebook.com/hackercup',
     'leetcode.com',
     'codedrills.io'
+    'usaco.org'
 ]
 
 GuildSettings = recordtype(
@@ -188,18 +203,18 @@ class Reminders(commands.Cog):
         self.finished_contests = [
             contest for contest in contest_cache
             if contest.start_time +
-            contest.duration < current_time
+               contest.duration < current_time
         ]
         self.active_contests = [
             contest for contest in contest_cache
             if contest.start_time <= current_time <=
-            contest.start_time + contest.duration
+               contest.start_time + contest.duration
         ]
 
         self.active_contests.sort(key=lambda contest: contest.start_time)
         self.finished_contests.sort(
             key=lambda contest: contest.start_time +
-            contest.duration,
+                                contest.duration,
             reverse=True
         )
         self.future_contests.sort(key=lambda contest: contest.start_time)
@@ -230,8 +245,10 @@ class Reminders(commands.Cog):
         if settings:
             _, _, _, _, website_allowed_patterns, website_disallowed_patterns = \
                 settings
-        website_allowed_patterns = json.loads(website_allowed_patterns) if settings else _WEBSITE_ALLOWED_PATTERNS
-        website_disallowed_patterns = json.loads(website_disallowed_patterns) if settings else _WEBSITE_DISALLOWED_PATTERNS
+        website_allowed_patterns = json.loads(
+            website_allowed_patterns) if settings else _WEBSITE_ALLOWED_PATTERNS
+        website_disallowed_patterns = json.loads(
+            website_disallowed_patterns) if settings else _WEBSITE_DISALLOWED_PATTERNS
         contests = [contest for contest in contests if contest.is_desired(
             website_allowed_patterns, website_disallowed_patterns, resources)]
         return contests
@@ -251,10 +268,10 @@ class Reminders(commands.Cog):
         if settings is None or any(setting is None for setting in settings):
             return
         channel_id, role_id, before, localtimezone, \
-            website_allowed_patterns, website_disallowed_patterns = settings
-        
+        website_allowed_patterns, website_disallowed_patterns = settings
 
-        channel_id, role_id, before = int(channel_id), int(role_id), json.loads(before)
+        channel_id, role_id, before = int(
+            channel_id), int(role_id), json.loads(before)
         website_allowed_patterns = json.loads(website_allowed_patterns)
         website_disallowed_patterns = json.loads(website_disallowed_patterns)
         localtimezone = pytz.timezone(localtimezone)
@@ -287,9 +304,9 @@ class Reminders(commands.Cog):
         chunks = paginator.chunkify(contests, _CONTESTS_PER_PAGE)
         for chunk in chunks:
             embed = discord_common.color_embed()
-            for name, value in _get_embed_fields_from_contests(
+            for name, value, website in _get_embed_fields_from_contests(
                     chunk, localtimezone):
-                embed.add_field(name=name, value=value, inline=False)
+                embed.add_field(name=(website + " || " + name), value=value, inline=False)
             pages.append((title, embed))
         return pages
 
@@ -334,11 +351,11 @@ class Reminders(commands.Cog):
         before = sorted(before, reverse=True)
         _, _, _, default_time_zone, default_allowed_patterns, default_disallowed_patterns = \
             get_default_guild_settings()
-        cf_common.user_db.set_reminder_settings( \
-            ctx.guild.id, ctx.channel.id, role.id, json.dumps(before), \
-                str(default_time_zone), json.dumps(default_allowed_patterns), \
-                json.dumps(default_disallowed_patterns)
-            )
+        cf_common.user_db.set_reminder_settings(
+            ctx.guild.id, ctx.channel.id, role.id, json.dumps(before),
+            str(default_time_zone), json.dumps(default_allowed_patterns),
+            json.dumps(default_disallowed_patterns)
+        )
         await ctx.send(
             embed=discord_common.embed_success(
                 'Reminder settings saved successfully'))
@@ -346,7 +363,7 @@ class Reminders(commands.Cog):
 
     @remind.command(brief='Set reminder settings')
     @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
-    async def inchannel(self, ctx, channel:discord.TextChannel, role: discord.Role, *before: int):
+    async def inchannel(self, ctx, channel: discord.TextChannel, role: discord.Role, *before: int):
         """Sets reminder channel to current channel,
         role to the given role, and reminder
         times to the given values in minutes.
@@ -362,16 +379,15 @@ class Reminders(commands.Cog):
         before = sorted(before, reverse=True)
         _, _, _, default_time_zone, default_allowed_patterns, default_disallowed_patterns = \
             get_default_guild_settings()
-        cf_common.user_db.set_reminder_settings( \
-            ctx.guild.id, channel.id, role.id, json.dumps(before), \
-                str(default_time_zone), json.dumps(default_allowed_patterns), \
-                json.dumps(default_disallowed_patterns)
-            )
+        cf_common.user_db.set_reminder_settings(
+            ctx.guild.id, channel.id, role.id, json.dumps(before),
+            str(default_time_zone), json.dumps(default_allowed_patterns),
+            json.dumps(default_disallowed_patterns)
+        )
         await ctx.send(
             embed=discord_common.embed_success(
                 'Reminder settings saved successfully'))
         self._reschedule_tasks(ctx.guild.id)
-
 
     @remind.command(brief='Resets the judges settings to the default ones')
     @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
@@ -383,8 +399,9 @@ class Reminders(commands.Cog):
         # load settings
         settings = cf_common.user_db.get_reminder_settings(ctx.guild.id)
         channel_id, role_id, before, localtimezone, \
-            website_allowed_patterns, website_disallowed_patterns = settings
-        channel_id, role_id, before = int(channel_id), int(role_id), json.loads(before)
+        website_allowed_patterns, website_disallowed_patterns = settings
+        channel_id, role_id, before = int(
+            channel_id), int(role_id), json.loads(before)
         localtimezone = pytz.timezone(localtimezone)
         website_allowed_patterns = json.loads(website_allowed_patterns)
         website_disallowed_patterns = json.loads(website_disallowed_patterns)
@@ -392,11 +409,11 @@ class Reminders(commands.Cog):
         website_allowed_patterns = default_allowed_patterns
         website_disallowed_patterns = default_disallowed_patterns
         # save settings
-        cf_common.user_db.set_reminder_settings( \
-            ctx.guild.id, channel_id, role_id, json.dumps(before), \
-                str(localtimezone), json.dumps(default_allowed_patterns), \
-                json.dumps(default_disallowed_patterns)
-            )
+        cf_common.user_db.set_reminder_settings(
+            ctx.guild.id, channel_id, role_id, json.dumps(before),
+            str(localtimezone), json.dumps(default_allowed_patterns),
+            json.dumps(default_disallowed_patterns)
+        )
         await ctx.send(embed=discord_common.embed_success(
             'Succesfully reset the judges settings to the default ones'))
         self._reschedule_tasks(ctx.guild.id)
@@ -410,11 +427,12 @@ class Reminders(commands.Cog):
             await ctx.send(embed=discord_common.embed_neutral('Reminder not set'))
             return
         channel_id, role_id, before, localtimezone, \
-            website_allowed_patterns, website_disallowed_patterns = settings
-        channel_id, role_id, before = int(channel_id), int(role_id), json.loads(before)
+        website_allowed_patterns, website_disallowed_patterns = settings
+        channel_id, role_id, before = int(
+            channel_id), int(role_id), json.loads(before)
         website_allowed_patterns = json.loads(website_allowed_patterns)
         website_disallowed_patterns = json.loads(website_disallowed_patterns)
-        
+
         channel = ctx.guild.get_channel(channel_id)
         role = ctx.guild.get_role(role_id)
         if channel is None:
@@ -426,7 +444,7 @@ class Reminders(commands.Cog):
 
         subscribed_websites_str = ", ".join(
             website for website,
-            patterns in website_allowed_patterns.items() if patterns)
+                        patterns in website_allowed_patterns.items() if patterns)
 
         before_str = ', '.join(str(before_mins) for before_mins in before)
         embed = discord_common.embed_success('Current reminder settings')
@@ -444,8 +462,9 @@ class Reminders(commands.Cog):
         if settings is None:
             raise RemindersCogError('Reminders are not enabled.')
         channel_id, role_id, before, localtimezone, \
-            website_allowed_patterns, website_disallowed_patterns = settings
-        channel_id, role_id, before = int(channel_id), int(role_id), json.loads(before)
+        website_allowed_patterns, website_disallowed_patterns = settings
+        channel_id, role_id, before = int(
+            channel_id), int(role_id), json.loads(before)
         website_allowed_patterns = json.loads(website_allowed_patterns)
         website_disallowed_patterns = json.loads(website_disallowed_patterns)
         if role_id is None:
@@ -495,8 +514,9 @@ class Reminders(commands.Cog):
         # load settings
         settings = cf_common.user_db.get_reminder_settings(guild_id)
         channel_id, role_id, before, localtimezone, \
-            website_allowed_patterns, website_disallowed_patterns = settings
-        channel_id, role_id, before = int(channel_id), int(role_id), json.loads(before)
+        website_allowed_patterns, website_disallowed_patterns = settings
+        channel_id, role_id, before = int(
+            channel_id), int(role_id), json.loads(before)
         localtimezone = pytz.timezone(localtimezone)
         website_allowed_patterns = json.loads(website_allowed_patterns)
         website_disallowed_patterns = json.loads(website_disallowed_patterns)
@@ -512,11 +532,11 @@ class Reminders(commands.Cog):
                 disallowed_patterns[website]
             supported_websites.append(website)
         # save settings
-        cf_common.user_db.set_reminder_settings( \
-            guild_id, channel_id, role_id, json.dumps(before), \
-                str(localtimezone), json.dumps(website_allowed_patterns), \
-                json.dumps(website_disallowed_patterns)
-            )
+        cf_common.user_db.set_reminder_settings(
+            guild_id, channel_id, role_id, json.dumps(before),
+            str(localtimezone), json.dumps(website_allowed_patterns),
+            json.dumps(website_disallowed_patterns)
+        )
         return supported_websites, unsupported_websites
 
     @remind.command(brief='Start contest reminders from websites.')
@@ -539,7 +559,7 @@ class Reminders(commands.Cog):
             success_str = f'Successfully subscribed from \
                     {subscribed_websites_str} for contest reminders.'
             success_str += f'\n{unsupported_websites_str} \
-                {"are" if len(unsupported)>1 else "is"} \
+                {"are" if len(unsupported) > 1 else "is"} \
                 not supported.' if unsupported_websites_str else ""
             embed = discord_common.embed_success(success_str)
         await ctx.send(embed=embed)
@@ -564,7 +584,7 @@ class Reminders(commands.Cog):
             success_str = f'Successfully unsubscribed from \
                     {unsubscribed_websites_str} for contest reminders.'
             success_str += f'\n{unsupported_websites_str} \
-                {"are" if len(unsupported)>1 else "is"} \
+                {"are" if len(unsupported) > 1 else "is"} \
                 not supported.' if unsupported_websites_str else ""
             embed = discord_common.embed_success(success_str)
         await ctx.send(embed=embed)
@@ -589,7 +609,8 @@ class Reminders(commands.Cog):
             desc += '\n\nAll valid timezones can be found [here]'
             desc += f'({_PYTZ_TIMEZONES_GIST_URL})'
             raise RemindersCogError(desc)
-        cf_common.user_db.set_time_zone(ctx.guild.id, str(pytz.timezone(timezone)))
+        cf_common.user_db.set_time_zone(
+            ctx.guild.id, str(pytz.timezone(timezone)))
         await ctx.send(embed=discord_common.embed_success(
             f'Succesfully set the server timezone to {timezone}'))
 
@@ -605,12 +626,13 @@ class Reminders(commands.Cog):
         for resource in resources:
             if resource in _CLIST_RESOURCE_SHORT_FORMS:
                 resource = _CLIST_RESOURCE_SHORT_FORMS[resource]
-            if resource not in _SUPPORTED_CLIST_RESOURCES and resource!='codeforces.com':
-                return await ctx.send(str(resource)+' is not supported.')
+            if resource not in _SUPPORTED_CLIST_RESOURCES and resource != 'codeforces.com':
+                return await ctx.send(str(resource) + ' is not supported.')
             filter.append(resource)
-        if len(filter)==0:
+        if len(filter) == 0:
             filter = None
-        contests = self.get_guild_contests(self.future_contests, ctx.guild.id, resources=filter)
+        contests = self.get_guild_contests(
+            self.future_contests, ctx.guild.id, resources=filter)
         await self._send_contest_list(ctx, contests,
                                       title='Future contests',
                                       empty_msg='No future contests scheduled'
@@ -631,7 +653,7 @@ class Reminders(commands.Cog):
         contests = copy.deepcopy(self.get_guild_contests(
             self.finished_contests, ctx.guild.id))
         for contest in contests:
-            contest.name += " (ID : "+str(contest.id)+")"
+            contest.name += " (ID : " + str(contest.id) + ")"
         await self._send_contest_list(ctx, contests,
                                       title='Recently finished contests',
                                       empty_msg='No finished contests found'
