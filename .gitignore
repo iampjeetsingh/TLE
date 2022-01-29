@@ -116,3 +116,6 @@ pip-wheel-metadata/
 
 # logs
 /logs
+
+#firebase
+firebase-admin.json
