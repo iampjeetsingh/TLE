@@ -515,7 +515,7 @@ class Graphs(commands.Cog):
 
                     
 
-    @plot.command(brief='Plot Codeforces performance graph', usage='[codechef/atcoder] [handles...] [+zoom] [d>=[[dd]mm]yyyy] [d<[[dd]mm]yyyy]')
+    @plot.command(brief='Plot Codeforces performance graph', usage='[codechef/atcoder] [handles...] [+zoom] [d>=[[dd]mm]yyyy] [d<[[dd]mm]yyyy]', aliases=['perf'])
     async def performance(self, ctx, *args: str):
         """Plots Codeforces performance graph for the handles provided."""
 
