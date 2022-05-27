@@ -3,11 +3,12 @@ import asyncio
 import distutils.util
 import logging
 import os
+import base64
 import discord
 from logging.handlers import TimedRotatingFileHandler
 from os import environ
 from pathlib import Path
-
+from json import loads
 from os import environ
 import firebase_admin
 from firebase_admin import credentials
@@ -16,7 +17,7 @@ from firebase_admin import storage
 STORAGE_BUCKET = str(environ.get('STORAGE_BUCKET'))
 bucket = None
 if STORAGE_BUCKET!='None':
-    cred = credentials.Certificate('firebase-admin.json')
+    cred = credentials.Certificate(loads(base64.b64decode(environ.get('FIREBASE_ADMIN_JSON')).decode('UTF-8')))
     firebase_admin.initialize_app(cred, {
         'storageBucket': STORAGE_BUCKET
     })

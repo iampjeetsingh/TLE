@@ -563,19 +563,22 @@ class Contests(commands.Cog):
             await ctx.channel.send(embed=self._make_contest_embed_for_ranklist(contest=clist.format_contest(contest), timezone=timezone, parsed_at=parsed_at))
             paginator.paginate(self.bot, ctx.channel, pages, wait_time=_STANDINGS_PAGINATE_WAIT_TIME)
         else:
-            handles = await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True)
-            contest = cf_common.cache2.contest_cache.get_contest(contest_id)
-            ranklist = None
-            try:
-                ranklist = cf_common.cache2.ranklist_cache.get_ranklist(contest)
-            except cache_system2.RanklistNotMonitored:
-                if contest.phase == 'BEFORE':
-                    raise ContestCogError(f'Contest `{contest.id} | {contest.name}` has not started')
-                ranklist = await cf_common.cache2.ranklist_cache.generate_ranklist(contest.id,
-                                                                                fetch_changes=True)
-            await wait_msg.delete()
-            await ctx.channel.send(embed=self._make_contest_embed_for_ranklist(ranklist, timezone=timezone))
-            await self._show_ranklist(channel=ctx.channel, contest_id=contest_id, handles=handles, ranklist=ranklist)
+            if (int(contest_id) == 4):
+                await ctx.channel.send("```I\'m not doing that! (╯°□°）╯︵ ┻━┻ ```""")
+            else:
+                handles = await cf_common.resolve_handles(ctx, self.member_converter, handles, maxcnt=None, default_to_all_server=True)
+                contest = cf_common.cache2.contest_cache.get_contest(contest_id)
+                ranklist = None
+                try:
+                    ranklist = cf_common.cache2.ranklist_cache.get_ranklist(contest)
+                except cache_system2.RanklistNotMonitored:
+                    if contest.phase == 'BEFORE':
+                        raise ContestCogError(f'Contest `{contest.id} | {contest.name}` has not started')
+                    ranklist = await cf_common.cache2.ranklist_cache.generate_ranklist(contest.id,
+                                                                                    fetch_changes=True)
+                await wait_msg.delete()
+                await ctx.channel.send(embed=self._make_contest_embed_for_ranklist(ranklist, timezone=timezone))
+                await self._show_ranklist(channel=ctx.channel, contest_id=contest_id, handles=handles, ranklist=ranklist)
 
     async def _show_ranklist(self, channel, contest_id: int, handles: List[str], ranklist, vc: bool = False, delete_after: float = None):
         contest = cf_common.cache2.contest_cache.get_contest(contest_id)
