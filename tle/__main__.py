@@ -114,6 +114,10 @@ def main():
         clist_api.cache()
         await cf_common.initialize(args.nodb)
         asyncio.create_task(discord_common.presence(bot))
+    
+    @commands.check_any(commands.has_any_role('Admin', constants.TLE_MODERATOR), commands.is_owner())
+    async def clear(ctx, amount=5):
+        await ctx.channel.purge(limit=amount)
 
     bot.add_listener(discord_common.bot_error_handler, name='on_command_error')
     bot.run(token)
